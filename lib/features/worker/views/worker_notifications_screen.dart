@@ -302,7 +302,7 @@ class WorkerNotificationsScreen extends ConsumerWidget {
     return GestureDetector(
       onTap: () {
         if (!notification.isRead) {
-          ref.read(workerActionsProvider).markAsRead(notification.id);
+          ref.read(workerNotificationActionsProvider).markAsRead(notification.id);
         }
 
         if (notification.type == 'chat') {
