@@ -1,12 +1,17 @@
 workflows:
   ios-workflow:
     name: iOS Workflow
+
     environment:
       flutter: stable
 
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.sudeepacharjee.urbanservice
+
     scripts:
       - flutter pub get
-      - flutter build ipa --release
+      - flutter build ipa --release --no-codesign
 
     artifacts:
       - build/ios/ipa/*.ipa
