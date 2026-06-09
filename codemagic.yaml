@@ -10,6 +10,7 @@ workflows:
         bundle_identifier: com.sudeepacharjee.urbanservice
 
     scripts:
+      - flutter config --no-enable-swift-package-manager
       - flutter pub get
       - flutter build ipa --release
 
