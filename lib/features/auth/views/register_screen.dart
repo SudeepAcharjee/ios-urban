@@ -138,15 +138,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                         SizedBox(height: screenHeight * 0.04),
 
-                        if (!Platform.isIOS) ...[
+                        _buildSocialButton(
+                          icon: Image.asset(
+                            'images/logo/google.png',
+                            height: 22 * hScale.clamp(0.9, 1.1),
+                            width: 22 * hScale.clamp(0.9, 1.1),
+                          ),
+                          label: 'Continue with Google',
+                          onPressed: () => ref.read(authViewModelProvider.notifier).signInWithGoogle(isRegistration: true).catchError((_) {}),
+                          hScale: hScale,
+                        ),
+                        if (Platform.isIOS) ...[
+                          SizedBox(height: screenHeight * 0.02),
                           _buildSocialButton(
-                            icon: Image.asset(
-                              'images/logo/google.png',
-                              height: 22 * hScale.clamp(0.9, 1.1),
-                              width: 22 * hScale.clamp(0.9, 1.1),
+                            icon: Icon(
+                              Icons.apple,
+                              size: 26 * hScale.clamp(0.9, 1.1),
+                              color: Colors.white,
                             ),
-                            label: 'Continue with Google',
-                            onPressed: () => ref.read(authViewModelProvider.notifier).signInWithGoogle(isRegistration: true).catchError((_) {}),
+                            label: 'Continue with Apple',
+                            onPressed: () => ref.read(authViewModelProvider.notifier).signInWithApple(isRegistration: true).catchError((_) {}),
+                            backgroundColor: Colors.black,
+                            contentColor: Colors.white,
                             hScale: hScale,
                           ),
                         ],
