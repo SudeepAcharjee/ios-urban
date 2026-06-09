@@ -244,31 +244,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         
                         SizedBox(height: screenHeight * 0.04),
                         
-                        _buildSocialButton(
-                          icon: Image.asset(
-                            'images/logo/google.png',
-                            height: 22 * hScale.clamp(0.9, 1.1),
-                            width: 22 * hScale.clamp(0.9, 1.1),
-                          ),
-                          label: 'Continue with Google',
-                          onPressed: () => _handleSocialLogin(() => ref.read(authViewModelProvider.notifier).signInWithGoogle()),
-                          backgroundColor: Colors.white,
-                          contentColor: Colors.black87,
-                          hScale: hScale,
-                        ),
-                        
-                        if (Platform.isIOS) ...[
-                          SizedBox(height: screenHeight * 0.02),
+                        if (!Platform.isIOS) ...[
                           _buildSocialButton(
-                            icon: Icon(
-                              Icons.apple,
-                              size: 26 * hScale.clamp(0.9, 1.1),
-                              color: Colors.white,
+                            icon: Image.asset(
+                              'images/logo/google.png',
+                              height: 22 * hScale.clamp(0.9, 1.1),
+                              width: 22 * hScale.clamp(0.9, 1.1),
                             ),
-                            label: 'Continue with Apple',
-                            onPressed: () => _handleSocialLogin(() => ref.read(authViewModelProvider.notifier).signInWithApple()),
-                            backgroundColor: Colors.black,
-                            contentColor: Colors.white,
+                            label: 'Continue with Google',
+                            onPressed: () => _handleSocialLogin(() => ref.read(authViewModelProvider.notifier).signInWithGoogle()),
+                            backgroundColor: Colors.white,
+                            contentColor: Colors.black87,
                             hScale: hScale,
                           ),
                         ],
