@@ -1,0 +1,502 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import '../viewmodels/worker_provider.dart';
+import 'package:car_washing_service_app/features/home/models/notification_model.dart';
+import '../../home/views/chat_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+class WorkerNotificationsScreen extends ConsumerWidget {
+  const WorkerNotificationsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    const primaryColor = Color(0xFF2029C5);
+    const textPrimary = Color(0xFF111827);
+    const textSecondary = Color(0xFF6B7280);
+    
+    final notificationsAsync = ref.watch(workerNotificationsProvider);
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        toolbarHeight: 50,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          icon: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF3F4F6),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.arrow_back_ios_new, size: 14, color: textPrimary),
+          ),
+        ),
+        title: const Text(
+          'Notifications',
+          style: TextStyle(
+            color: textPrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: textPrimary),
+            onSelected: (value) {
+              if (value == 'clear_all') {
+                _showClearAllDialog(context, ref);
+              } else if (value == 'mark_all_read') {
+                ref.read(workerNotificationActionsProvider).markAllAsRead();
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<String>(
+                value: 'mark_all_read',
+                child: Row(
+                  children: [
+                    Icon(Icons.done_all_rounded, size: 20, color: primaryColor),
+                    SizedBox(width: 10),
+                    Text('Mark all as read'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'clear_all',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                    SizedBox(width: 10),
+                    Text('Clear All', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 10),
+        ],
+      ),
+      body: SafeArea(
+        child: notificationsAsync.when(
+          data: (rawNotifications) {
+            final notifications = rawNotifications.map((data) {
+              return NotificationModel.fromMap(data['id']?.toString() ?? '', data);
+            }).toList();
+
+            if (notifications.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(30),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF3F4F6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.notifications_off_outlined, size: 60, color: Colors.grey.shade400),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'No Notifications Yet',
+                      style: TextStyle(color: textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'We\'ll notify you when something\nnew arrives!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: textSecondary, fontSize: 14),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // Group by date
+            final Map<String, List<NotificationModel>> grouped = {};
+            for (var n in notifications) {
+              final dateStr = _getDateHeader(n.timestamp);
+              grouped.putIfAbsent(dateStr, () => []).add(n);
+            }
+
+            return RefreshIndicator(
+              color: primaryColor,
+              backgroundColor: Colors.white,
+              onRefresh: () async {
+                // ignore: unused_result
+                ref.refresh(workerNotificationsProvider);
+                await Future.delayed(const Duration(milliseconds: 1000));
+              },
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(left: 20, right: 20, top: 0, bottom: 10),
+                itemCount: grouped.length,
+                itemBuilder: (context, index) {
+                  final dateHeader = grouped.keys.elementAt(index);
+                  final items = grouped[dateHeader]!;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionHeader(dateHeader, textSecondary),
+                      ...items.map((n) => _buildNotificationCard(
+                        context,
+                        ref,
+                        n,
+                        primaryColor,
+                        textPrimary,
+                        textSecondary,
+                      )),
+                    ],
+                  );
+                },
+              ),
+            );
+          },
+          loading: () => _buildSkeletonList(),
+          error: (err, stack) => Center(child: Text('Error: $err')),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: 8,
+      itemBuilder: (context, index) => _buildSkeletonCard(),
+    );
+  }
+
+  Widget _buildSkeletonCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 25),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(15),
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    Container(
+                      width: 50,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Container(
+                  width: 180,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showClearAllDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear All Notifications?'),
+        content: const Text('This will permanently delete all your notifications.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(workerNotificationActionsProvider).clearAll();
+              Navigator.pop(context);
+            },
+            child: const Text('Clear All', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getDateHeader(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final notificationDate = DateTime(date.year, date.month, date.day);
+
+    if (notificationDate == today) return 'Today';
+    if (notificationDate == yesterday) return 'Yesterday';
+    
+    return DateFormat('d MMMM yyyy').format(date);
+  }
+
+  Widget _buildSectionHeader(String title, Color textColor) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 8),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: textColor.withOpacity(0.7),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationCard(
+    BuildContext context,
+    WidgetRef ref,
+    NotificationModel notification,
+    Color primaryColor,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    final iconInfo = _getIconInfo(notification.type, primaryColor);
+    
+    return GestureDetector(
+      onTap: () {
+        if (!notification.isRead) {
+          ref.read(workerNotificationActionsProvider).markAsRead(notification.id);
+        }
+
+        if (notification.type == 'chat') {
+          final String customerName = notification.title.replaceAll('New Message from ', '').trim();
+          final String? recipientId = notification.senderId;
+
+          if (recipientId != null && recipientId.isNotEmpty) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChatScreen(
+                  providerName: customerName,
+                  providerRole: 'Customer',
+                  bookingId: notification.bookingId ?? 'direct_chats/$recipientId',
+                  isReadOnly: false,
+                  avatarType: 'icon',
+                  avatarIcon: Icons.person,
+                  avatarBgColor: primaryColor,
+                  recipientId: recipientId,
+                  recipientRole: 'user',
+                ),
+              ),
+            );
+          }
+        } else if (notification.type == 'support') {
+          final workerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatScreen(
+                providerName: 'Urban Services',
+                providerRole: 'Official Support',
+                bookingId: 'support_chats/$workerId',
+                avatarType: 'icon',
+                avatarIcon: Icons.headset_mic_rounded,
+                avatarBgColor: primaryColor,
+              ),
+            ),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Icon Container
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: iconInfo.color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Icon(iconInfo.icon, color: iconInfo.color, size: 24),
+            ),
+            const SizedBox(width: 15),
+            
+            // Text Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          notification.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: textPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        DateFormat('hh:mm a').format(notification.timestamp),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textSecondary.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          notification.body,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                      if (!notification.isRead)
+                        Container(
+                          margin: const EdgeInsets.only(left: 10),
+                          width: 18,
+                          height: 18,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF6C63FF),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '1',
+                              style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  
+                  // Demo Action Buttons (if type is special)
+                  if (notification.type == 'onboarding') ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _buildActionButton('Take a tour', true),
+                        const SizedBox(width: 10),
+                        _buildActionButton('No, thanks!', false),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(String label, bool isPrimary) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isPrimary ? const Color(0xFF6C63FF) : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        border: isPrimary ? null : Border.all(color: const Color(0xFF6C63FF).withOpacity(0.3)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isPrimary ? Colors.white : const Color(0xFF6C63FF),
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  _IconInfo _getIconInfo(String type, Color primaryColor) {
+    switch (type) {
+      case 'discount':
+        return _IconInfo(Icons.local_offer_outlined, Colors.orange);
+      case 'appointment':
+      case 'booking':
+      case 'new_task':
+      case 'worker_assigned':
+        return _IconInfo(Icons.calendar_today, const Color(0xFF6C63FF));
+      case 'completed':
+        return _IconInfo(Icons.event_available, Colors.green);
+      case 'cancelled':
+        return _IconInfo(Icons.event_busy, Colors.red);
+      case 'onboarding':
+        return _IconInfo(Icons.medical_services_outlined, const Color(0xFF6C63FF));
+      case 'payment':
+        return _IconInfo(Icons.account_balance_wallet_outlined, Colors.green);
+      case 'support':
+        return _IconInfo(Icons.headset_mic_outlined, Colors.orange);
+      case 'chat':
+        return _IconInfo(Icons.chat_bubble_outline_rounded, primaryColor);
+      default:
+        // Notification bell icon from original worker screen (outlined)
+        return _IconInfo(Icons.notifications_none_outlined, primaryColor);
+    }
+  }
+}
+
+class _IconInfo {
+  final IconData icon;
+  final Color color;
+  _IconInfo(this.icon, this.color);
+}
