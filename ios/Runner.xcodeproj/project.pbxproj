@@ -540,7 +540,7 @@
 		};
 		331C8088294A63A400263BE5 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = D14917D545646ACB9FE47D75 /* Pods-RunnerTests.debug.xcconfig */;
+			baseConfigurationReference = 0E9E5D1361AE42AEF6DAD8D2 /* Pods-Runner.debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
@@ -578,7 +578,7 @@
 		};
 		331C808A294A63A400263BE5 /* Profile */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 6B1E79D4141402E6C1468EBD /* Pods-RunnerTests.profile.xcconfig */;
+			baseConfigurationReference = 46D5786ECA94D5AC946B0282 /* Pods-Runner.profile.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
