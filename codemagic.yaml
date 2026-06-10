@@ -11,6 +11,7 @@ workflows:
 
     scripts:
       - flutter pub get
+      - xcode-project use-profiles
       - flutter build ipa --release
 
     artifacts:
