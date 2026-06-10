@@ -16,8 +16,6 @@ flutter pub get
 
 flutter precache --ios
 
-flutter build ios --debug --no-codesign
-
 cd ios
 
-pod install
+pod install --repo-update
