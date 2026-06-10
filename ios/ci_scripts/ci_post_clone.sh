@@ -1,12 +1,9 @@
 #!/bin/sh
-
 set -e
-
-echo "Installing Flutter..."
 
 git clone https://github.com/flutter/flutter.git --depth 1 -b stable $HOME/flutter
 
-export PATH="$PATH:$HOME/flutter/bin"
+export PATH="$HOME/flutter/bin:$PATH"
 
 flutter --version
 
@@ -18,4 +15,5 @@ flutter precache --ios
 
 cd ios
 
+pod repo update
 pod install --repo-update
