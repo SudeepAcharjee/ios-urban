@@ -537,8 +537,7 @@ class _BookAWashScreenState extends ConsumerState<BookAWashScreen> {
               _buildSummaryPriceRow('Visiting Fee', 'Free', isFree: true),
               const SizedBox(height: 14),
               _buildSummaryPriceRow('GST', '₹${_gstFee.toInt()}'),
-              const SizedBox(height: 14),
-              _buildSummaryPriceRow('Delivery Fee', 'Free', isFree: true),
+
 
               if (_discountAmount > 0) ...[
                 const SizedBox(height: 14),

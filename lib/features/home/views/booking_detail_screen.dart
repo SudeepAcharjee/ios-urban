@@ -494,7 +494,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             const SizedBox(height: 15),
             _buildPaymentRow('Item Total', '₹${price + 10}', primaryGreen),
             _buildPaymentRow('Discount', '₹10', primaryGreen),
-            _buildPaymentRow('Delivery Fee', 'Free', primaryGreen, isFree: true),
+            _buildPaymentRow('Visiting Fee', 'Free', primaryGreen, isFree: true),
             const Divider(height: 30),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

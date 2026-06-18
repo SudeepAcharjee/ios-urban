@@ -174,6 +174,13 @@ class _WorkerChatScreenState extends ConsumerState<WorkerChatScreen> {
         data: (tasks) {
           final Map<String, Map<String, dynamic>> uniqueUserTasks = {};
           for (var task in tasks) {
+            final status = task['status'] as String?;
+            final paymentStatus = task['paymentStatus'] as String?;
+            final isCompleted = status == 'Completed' || 
+                (status == 'Pending Verification' && paymentStatus == 'Paid');
+            
+            if (isCompleted) continue;
+
             final userId = task['userId'] as String?;
             if (userId != null) {
               if (!uniqueUserTasks.containsKey(userId)) {
@@ -185,6 +192,13 @@ class _WorkerChatScreenState extends ConsumerState<WorkerChatScreen> {
 
           // Initialize listeners for ALL tasks outside of build return
           for (var task in tasks) {
+            final status = task['status'] as String?;
+            final paymentStatus = task['paymentStatus'] as String?;
+            final isCompleted = status == 'Completed' || 
+                (status == 'Pending Verification' && paymentStatus == 'Paid');
+            
+            if (isCompleted) continue;
+
             final bId = task['id'] as String?;
             final uId = task['userId'] as String?;
             if (uId != null) {

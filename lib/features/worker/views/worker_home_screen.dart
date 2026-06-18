@@ -542,7 +542,7 @@ class _WorkerHomeScreenState extends ConsumerState<WorkerHomeScreen> {
                         );
                       }
                       return SizedBox(
-                        height: 260, // Define height for horizontal list
+                        height: 235, // Define height for horizontal list
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           clipBehavior: Clip.none,
@@ -717,35 +717,16 @@ class _WorkerHomeScreenState extends ConsumerState<WorkerHomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w900, 
-                                fontSize: 17, 
-                                color: Color(0xFF0F172A),
-                                letterSpacing: -0.5,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFDCFCE7),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              price,
-                              style: const TextStyle(color: Color(0xFF15803D), fontSize: 13, fontWeight: FontWeight.w900),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900, 
+                          fontSize: 17, 
+                          color: Color(0xFF0F172A),
+                          letterSpacing: -0.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 6),
                       Row(
@@ -780,36 +761,18 @@ class _WorkerHomeScreenState extends ConsumerState<WorkerHomeScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Icon(Icons.access_time_filled_rounded, size: 14, color: primaryColor.withOpacity(0.6)),
-                          const SizedBox(width: 6),
-                          Text(
-                            time, 
-                            style: TextStyle(
-                              color: Colors.grey.shade600, 
-                              fontSize: 12, 
-                              fontWeight: FontWeight.w600
-                            )
-                          ),
-                        ],
-                      ),
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          Icon(Icons.location_on_rounded, size: 14, color: Colors.grey.shade400),
-                          const SizedBox(width: 6),
-                          Expanded(
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDCFCE7),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                             child: Text(
-                              location,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.grey.shade500, 
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
+                              price,
+                              style: const TextStyle(color: Color(0xFF15803D), fontSize: 13, fontWeight: FontWeight.w900),
                             ),
                           ),
                         ],

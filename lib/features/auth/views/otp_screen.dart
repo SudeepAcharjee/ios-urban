@@ -289,55 +289,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               ),
             ),
             
-            if (_currentStep < 2)
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 16,
-                left: 16,
-                child: GestureDetector(
-                  onTap: () async {
-                    if (_currentStep == 1) {
-                      setState(() {
-                        _currentStep = 0;
-                      });
-                    } else {
-                      await FirebaseAuth.instance.signOut();
-                      if (context.mounted) {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (context) => const RegisterScreen()),
-                          (route) => false,
-                        );
-                      }
-                    }
-                  },
-                  child: Container(
-                    padding: EdgeInsets.all(8 * hScale.clamp(0.8, 1.2)),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.arrow_back_ios_new,
-                      color: Colors.black,
-                      size: 20 * hScale.clamp(0.8, 1.2),
-                    ),
-                  ),
-                ),
-              ),
-            
             Center(
               child: SingleChildScrollView(
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
-                  padding: EdgeInsets.all(screenWidth * 0.08),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(32),
@@ -349,15 +305,73 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                       ),
                     ],
                   ),
-                  child: Material( // Added Material to fix text styling in transparent route
-                    color: Colors.transparent,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_currentStep == 0) _buildConfirmStep(primaryColor, hScale, screenHeight),
-                        if (_currentStep == 1) _buildOtpStep(primaryColor, hScale, screenHeight, screenWidth),
-                        if (_currentStep == 2) _buildSuccessStep(primaryColor, hScale, screenHeight),
-                      ],
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Stack(
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(
+                              top: _currentStep < 2 ? screenWidth * 0.12 : screenWidth * 0.08,
+                              left: screenWidth * 0.08,
+                              right: screenWidth * 0.08,
+                              bottom: screenWidth * 0.08,
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (_currentStep == 0) _buildConfirmStep(primaryColor, hScale, screenHeight),
+                                if (_currentStep == 1) _buildOtpStep(primaryColor, hScale, screenHeight, screenWidth),
+                                if (_currentStep == 2) _buildSuccessStep(primaryColor, hScale, screenHeight),
+                              ],
+                            ),
+                          ),
+                          if (_currentStep < 2)
+                            Positioned(
+                              top: 16,
+                              left: 16,
+                              child: GestureDetector(
+                                onTap: () async {
+                                  if (_currentStep == 1) {
+                                    setState(() {
+                                      _currentStep = 0;
+                                    });
+                                  } else {
+                                    await FirebaseAuth.instance.signOut();
+                                    if (context.mounted) {
+                                      Navigator.pushAndRemoveUntil(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                                        (route) => false,
+                                      );
+                                    }
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade50,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.grey.shade200),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.arrow_back_ios_new,
+                                    color: Colors.grey.shade700,
+                                    size: 14 * hScale.clamp(0.8, 1.2),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

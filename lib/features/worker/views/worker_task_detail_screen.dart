@@ -34,6 +34,8 @@ class _WorkerTaskDetailScreenState extends ConsumerState<WorkerTaskDetailScreen>
   bool _hasUploadedProof = false;
   bool _isPaid = false;
 
+  bool get _shouldHideCustomerAndLocation => _status == 'Completed' || (_status == 'Pending Verification' && _isPaid);
+
   @override
   void initState() {
     super.initState();
@@ -952,183 +954,185 @@ class _WorkerTaskDetailScreenState extends ConsumerState<WorkerTaskDetailScreen>
               ),
             ),
 
-            const SizedBox(height: 20),
+            if (!_shouldHideCustomerAndLocation) ...[
+              const SizedBox(height: 20),
 
-            _buildSection(
-              title: 'Customer Details',
-              icon: Icons.person_outline_rounded,
-              iconBgColor: const Color(0xFFF3E8FF),
-              iconColor: const Color(0xFF7C3AED),
-              child: (widget.taskData['userId'] == null || widget.taskData['userId'].toString().isEmpty)
-                ? const Text('Customer data not available')
-                : FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance.collection('users').doc(widget.taskData['userId']).get(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(15.0),
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                        );
-                      }
-                      if (snapshot.hasError) {
-                        return const Text('Error loading customer profile');
-                      }
-
-                      final userData = snapshot.data?.data() as Map<String, dynamic>?;
-                      final String name = userData?['name'] ?? widget.taskData['userName'] ?? 'Customer';
-                      final String? profilePic = userData?['profilePic'];
-
-                      final String workerId = FirebaseAuth.instance.currentUser?.uid ?? '';
-                      final String userId = widget.taskData['userId'] ?? '';
-                      String chatId = 'bookings/${widget.taskData['id']}';
-                      if (userId.isNotEmpty) {
-                        final List<String> ids = [workerId, userId]..sort();
-                        chatId = 'direct_chats/${ids[0]}_${ids[1]}';
-                      }
-
-                      void navigateToChat() {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ChatScreen(
-                              providerName: name,
-                              providerRole: widget.taskData['title'] ?? 'Customer',
-                              bookingId: chatId,
-                              isReadOnly: false,
-                              avatarType: profilePic != null ? 'image' : 'icon',
-                              avatarIcon: Icons.person,
-                              avatarBgColor: primaryColor,
-                              imageUrl: profilePic,
-                              recipientId: userId,
-                              recipientRole: 'user',
-                            ),
-                          ),
-                        );
-                      }
-
-                      return InkWell(
-                        onTap: navigateToChat,
-                        borderRadius: BorderRadius.circular(20),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 25, 
-                              backgroundColor: const Color(0xFFEEF2FF),
-                              backgroundImage: (profilePic != null && profilePic.isNotEmpty) ? NetworkImage(profilePic) : null,
-                              child: (profilePic == null || profilePic.isEmpty) ? const Icon(Icons.person, color: Color(0xFF4F46E5)) : null,
-                            ),
-                            const SizedBox(width: 15),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    name, 
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold, 
-                                      fontSize: 16,
-                                      color: Color(0xFF0F172A),
-                                    ),
-                                  ),
-                                ],
+              _buildSection(
+                title: 'Customer Details',
+                icon: Icons.person_outline_rounded,
+                iconBgColor: const Color(0xFFF3E8FF),
+                iconColor: const Color(0xFF7C3AED),
+                child: (widget.taskData['userId'] == null || widget.taskData['userId'].toString().isEmpty)
+                  ? const Text('Customer data not available')
+                  : FutureBuilder<DocumentSnapshot>(
+                      future: FirebaseFirestore.instance.collection('users').doc(widget.taskData['userId']).get(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(15.0),
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2),
                               ),
                             ),
-                            IconButton(
-                              onPressed: navigateToChat,
-                              icon: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFEEF2FF),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.chat_bubble_rounded, color: Color(0xFF4F46E5), size: 20),
+                          );
+                        }
+                        if (snapshot.hasError) {
+                          return const Text('Error loading customer profile');
+                        }
+
+                        final userData = snapshot.data?.data() as Map<String, dynamic>?;
+                        final String name = userData?['name'] ?? widget.taskData['userName'] ?? 'Customer';
+                        final String? profilePic = userData?['profilePic'];
+
+                        final String workerId = FirebaseAuth.instance.currentUser?.uid ?? '';
+                        final String userId = widget.taskData['userId'] ?? '';
+                        String chatId = 'bookings/${widget.taskData['id']}';
+                        if (userId.isNotEmpty) {
+                          final List<String> ids = [workerId, userId]..sort();
+                          chatId = 'direct_chats/${ids[0]}_${ids[1]}';
+                        }
+
+                        void navigateToChat() {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ChatScreen(
+                                providerName: name,
+                                providerRole: widget.taskData['title'] ?? 'Customer',
+                                bookingId: chatId,
+                                isReadOnly: false,
+                                avatarType: profilePic != null ? 'image' : 'icon',
+                                avatarIcon: Icons.person,
+                                avatarBgColor: primaryColor,
+                                imageUrl: profilePic,
+                                recipientId: userId,
+                                recipientRole: 'user',
                               ),
                             ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-            ),
+                          );
+                        }
 
-            const SizedBox(height: 20),
-
-            GestureDetector(
-              onTap: () => _openMap(address),
-              child: _buildSection(
-                title: 'Service Location',
-                icon: Icons.location_on_outlined,
-                iconBgColor: const Color(0xFFE0F2FE),
-                iconColor: const Color(0xFF0284C7),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        return InkWell(
+                          onTap: navigateToChat,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Row(
                             children: [
-                              const Text(
-                                'CUSTOMER ADDRESS',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
+                              CircleAvatar(
+                                radius: 25, 
+                                backgroundColor: const Color(0xFFEEF2FF),
+                                backgroundImage: (profilePic != null && profilePic.isNotEmpty) ? NetworkImage(profilePic) : null,
+                                child: (profilePic == null || profilePic.isEmpty) ? const Icon(Icons.person, color: Color(0xFF4F46E5)) : null,
+                              ),
+                              const SizedBox(width: 15),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name, 
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold, 
+                                        fontSize: 16,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                address,
-                                style: const TextStyle(
-                                  color: Color(0xFF1E293B),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.4,
+                              IconButton(
+                                onPressed: navigateToChat,
+                                icon: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFEEF2FF),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.chat_bubble_rounded, color: Color(0xFF4F46E5), size: 20),
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _openMap(address),
-                        icon: const Icon(Icons.directions_rounded, color: Colors.white),
-                        label: const Text(
-                          'NAVIGATE TO CUSTOMER',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
+              ),
+
+              const SizedBox(height: 20),
+
+              GestureDetector(
+                onTap: () => _openMap(address),
+                child: _buildSection(
+                  title: 'Service Location',
+                  icon: Icons.location_on_outlined,
+                  iconBgColor: const Color(0xFFE0F2FE),
+                  iconColor: const Color(0xFF0284C7),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'CUSTOMER ADDRESS',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  address,
+                                  style: const TextStyle(
+                                    color: Color(0xFF1E293B),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0284C7),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(26),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _openMap(address),
+                          icon: const Icon(Icons.directions_rounded, color: Colors.white),
+                          label: const Text(
+                            'NAVIGATE TO CUSTOMER',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0284C7),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(26),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ],
 
             const SizedBox(height: 20),
 
