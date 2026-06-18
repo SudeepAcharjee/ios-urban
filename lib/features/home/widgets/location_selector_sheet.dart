@@ -216,6 +216,8 @@ class _LocationSelectorSheetState extends ConsumerState<LocationSelectorSheet> {
                                           .read(authViewModelProvider.notifier)
                                           .updateProfile({
                                         'location': result['displayAddress'],
+                                        'latitude': result['latitude'],
+                                        'longitude': result['longitude'],
                                       });
                                       if (context.mounted) {
                                         Navigator.pop(context);
@@ -264,6 +266,8 @@ class _LocationSelectorSheetState extends ConsumerState<LocationSelectorSheet> {
                                                 .read(authViewModelProvider.notifier)
                                                 .updateProfile({
                                               'location': address,
+                                              'latitude': position.latitude,
+                                              'longitude': position.longitude,
                                             });
                                             if (context.mounted) {
                                               Navigator.pop(context);
@@ -381,6 +385,8 @@ class _LocationSelectorSheetState extends ConsumerState<LocationSelectorSheet> {
                                             .read(authViewModelProvider.notifier)
                                             .updateProfile({
                                           'location': displayAddress,
+                                          'latitude': addr['latitude'],
+                                          'longitude': addr['longitude'],
                                         });
                                         Navigator.pop(context);
                                       },
@@ -692,6 +698,8 @@ class _SaveAddressDialogState extends State<_SaveAddressDialog> {
                       'city': widget.result['city'] ?? '',
                       'state': widget.result['state'] ?? '',
                       'zip': widget.result['zip'] ?? '',
+                      'latitude': widget.result['latitude'],
+                      'longitude': widget.result['longitude'],
                     };
                     await AddressService.addAddress(addressData);
                     if (context.mounted) {

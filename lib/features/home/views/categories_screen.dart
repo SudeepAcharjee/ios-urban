@@ -21,7 +21,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   OverlayEntry? _searchOverlayEntry;
   
   // 🔍 Filter State
-  RangeValues _currentRangeValues = const RangeValues(0, 1000);
+  RangeValues _currentRangeValues = const RangeValues(0, 20000);
   String _selectedFilter = 'Most Popular';
   String _selectedCategory = 'All';
   final List<String> _filterOptions = ['Most Popular', 'Price: Low to High', 'Price: High to Low', 'Top Rated'];
@@ -268,8 +268,8 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
               RangeSlider(
                 values: _currentRangeValues,
                 min: 0,
-                max: 1000,
-                divisions: 20,
+                max: 20000,
+                divisions: 100,
                 activeColor: const Color(0xFF2029C5),
                 inactiveColor: const Color(0xFFE5E7EB),
                 labels: RangeLabels(
@@ -392,7 +392,11 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             final matchesSearch = service.name.toLowerCase().contains(_searchController.text.toLowerCase());
             final price = int.tryParse(service.price) ?? 0;
             final matchesPrice = price >= _currentRangeValues.start && price <= _currentRangeValues.end;
-            final matchesCategory = _selectedCategory == 'All' || service.category == _selectedCategory;
+            final matchesCategory = _selectedCategory == 'All' ||
+                service.category.trim().toLowerCase() == _selectedCategory.trim().toLowerCase() ||
+                service.category.toLowerCase().contains(_selectedCategory.toLowerCase()) ||
+                _selectedCategory.toLowerCase().contains(service.category.toLowerCase()) ||
+                (service.category.toLowerCase().contains('ac') && _selectedCategory.toLowerCase().contains('ac'));
             return matchesSearch && matchesPrice && matchesCategory;
           }).toList();
 

@@ -53,18 +53,27 @@ final servicesByCategoryProvider = StreamProvider.family<List<ServiceModel>, Str
 
   yield* FirebaseFirestore.instance
       .collection('services')
-      .where('category', isEqualTo: category)
       .snapshots()
       .map((snapshot) {
     final allServices = snapshot.docs
         .map((doc) => ServiceModel.fromFirestore(doc))
         .toList();
 
+    // Filter by category in-memory to handle variations (e.g. AC vs AC Repair)
+    final categoryLower = category.trim().toLowerCase();
+    final filteredByCategory = allServices.where((service) {
+      final serviceCatLower = service.category.trim().toLowerCase();
+      return serviceCatLower == categoryLower ||
+             serviceCatLower.contains(categoryLower) ||
+             categoryLower.contains(serviceCatLower) ||
+             (serviceCatLower.contains('ac') && categoryLower.contains('ac'));
+    }).toList();
+
     if (userLocation == null) {
-      return allServices;
+      return filteredByCategory;
     }
 
-    return allServices.where((service) {
+    return filteredByCategory.where((service) {
       if (service.latitude == null || service.longitude == null || service.radius == null) {
         return true;
       }

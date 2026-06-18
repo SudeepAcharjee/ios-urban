@@ -44,6 +44,8 @@ class NotificationService {
 
   static Future<void> initialize() async {
     try {
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      
       // Initialize Local Notifications
       const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
       const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
@@ -80,6 +82,11 @@ class NotificationService {
             message.notification!.body ?? '',
           );
         }
+      });
+
+      // Print FCM token for debugging
+      getToken().then((token) {
+        print("FCM Token: $token");
       });
 
       // Listen to Realtime Database
@@ -145,5 +152,98 @@ class NotificationService {
   static Future<void> signOut() async {
     await _userSub?.cancel();
     _userSub = null;
+  }
+
+  static Future<void> notifyAdminsAboutPendingVerification({
+    required String bookingId,
+    required String bookingTitle,
+    required String workerId,
+    required String workerName,
+  }) async {
+    try {
+      final adminsSnapshot = await _database.ref('admins').get();
+      if (!adminsSnapshot.exists) return;
+
+      final dynamic data = adminsSnapshot.value;
+      List<String> adminIds = [];
+      if (data is Map) {
+        data.forEach((key, value) {
+          if (value == true || (value is Map && value['active'] == true)) {
+            adminIds.add(key.toString());
+          } else if (value != null) {
+            adminIds.add(key.toString());
+          }
+        });
+      }
+
+      if (adminIds.isEmpty) return;
+
+      final int timestamp = DateTime.now().millisecondsSinceEpoch;
+      final String messageText = 'Booking "$bookingTitle" (ID: #${bookingId.toUpperCase()}) completed by $workerName is pending verification.';
+
+      for (final adminId in adminIds) {
+        final notificationRef = _database.ref('notifications/$adminId').push();
+        await notificationRef.set({
+          'title': 'Booking Pending Verification',
+          'message': messageText,
+          'body': messageText,
+          'timestamp': timestamp,
+          'createdAt': timestamp,
+          'type': 'booking_verification',
+          'isRead': false,
+          'bookingId': bookingId,
+          'senderId': workerId,
+        });
+      }
+    } catch (e) {
+      print('Error notifying admins: $e');
+    }
+  }
+}
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  
+  final data = message.data;
+  final title = message.notification?.title ?? data['title'] ?? 'Urban Services';
+  final body = message.notification?.body ?? data['message'] ?? data['body'] ?? '';
+  
+  if (title.isNotEmpty || body.isNotEmpty) {
+    final FlutterLocalNotificationsPlugin localNotifications = FlutterLocalNotificationsPlugin();
+    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    const InitializationSettings initSettings = InitializationSettings(android: androidSettings, iOS: iosSettings);
+    await localNotifications.initialize(settings: initSettings);
+
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'high_importance_channel',
+      'High Importance Notifications',
+      description: 'This channel is used for important notifications.',
+      importance: Importance.max,
+    );
+    await localNotifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
+    final int notificationId = DateTime.now().millisecondsSinceEpoch % 1000000;
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'high_importance_channel',
+      'High Importance Notifications',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+    );
+    const NotificationDetails details = NotificationDetails(android: androidDetails, iOS: DarwinNotificationDetails());
+    await localNotifications.show(
+      id: notificationId,
+      title: title,
+      body: body,
+      notificationDetails: details,
+    );
   }
 }

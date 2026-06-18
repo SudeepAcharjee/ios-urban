@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:toastification/toastification.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/notification_service.dart';
+import '../../auth/viewmodels/auth_viewmodel.dart';
 
 class WorkerPaymentScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> taskData;
@@ -83,6 +85,22 @@ class _WorkerPaymentScreenState extends ConsumerState<WorkerPaymentScreen> with 
         'statusUpdatedAt': FieldValue.serverTimestamp(),
         'paymentCollectedAt': FieldValue.serverTimestamp(),
       });
+
+      try {
+        final workerInfo = ref.read(userDataProvider).value;
+        final String workerId = workerInfo?['uid'] ?? workerInfo?['id'] ?? 'unknown';
+        final String workerName = workerInfo?['name'] ?? 'Worker';
+        final String bookingTitle = widget.taskData['title'] ?? 'Service';
+
+        await NotificationService.notifyAdminsAboutPendingVerification(
+          bookingId: bookingId,
+          bookingTitle: bookingTitle,
+          workerId: workerId,
+          workerName: workerName,
+        );
+      } catch (notifyErr) {
+        debugPrint('Failed to send admin notification: $notifyErr');
+      }
 
       // Show success bottom sheet or dialog
       if (mounted) {

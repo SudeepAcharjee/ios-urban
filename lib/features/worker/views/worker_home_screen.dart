@@ -390,17 +390,6 @@ class _WorkerHomeScreenState extends ConsumerState<WorkerHomeScreen> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: List.generate(5, (index) {
-                              return Icon(
-                                Icons.star_rounded,
-                                color: index < avgRating.floor() ? const Color(0xFFF59E0B) : const Color(0xFFE2E8F0),
-                                size: 12,
-                              );
-                            }),
-                          ),
-                          const SizedBox(height: 2),
                           Text(
                             '(${reviews.length} Reviews)',
                             style: const TextStyle(
@@ -494,9 +483,7 @@ class _WorkerHomeScreenState extends ConsumerState<WorkerHomeScreen> {
                     ),
                     child: Row(
                       children: [
-                        _buildStatusOption('Available', Colors.green),
-                        Container(width: 1, height: 40, color: const Color(0xFFF1F5F9)),
-                        _buildStatusOption('Busy', Colors.orange),
+                        _buildStatusOption('Online', Colors.green),
                         Container(width: 1, height: 40, color: const Color(0xFFF1F5F9)),
                         _buildStatusOption('Offline', Colors.grey),
                       ],
@@ -560,6 +547,7 @@ class _WorkerHomeScreenState extends ConsumerState<WorkerHomeScreen> {
                           scrollDirection: Axis.horizontal,
                           clipBehavior: Clip.none,
                           child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: tasks.map((task) {
                               return _buildServiceCard(task);
                             }).toList(),
@@ -609,10 +597,11 @@ class _WorkerHomeScreenState extends ConsumerState<WorkerHomeScreen> {
   }
 
   Widget _buildStatusOption(String status, Color color) {
-    final bool isSelected = _currentStatus == status;
+    final bool isSelected = (status == 'Online' && (_currentStatus == 'Available' || _currentStatus == 'Busy')) ||
+                            (status == 'Offline' && _currentStatus == 'Offline');
     return Expanded(
       child: GestureDetector(
-        onTap: () => _updateWorkerStatus(status),
+        onTap: () => _updateWorkerStatus(status == 'Online' ? 'Available' : 'Offline'),
         child: Column(
           children: [
             AnimatedContainer(
@@ -679,7 +668,7 @@ class _WorkerHomeScreenState extends ConsumerState<WorkerHomeScreen> {
         );
       },
       child: Container(
-        width: 360, // Fixed width for horizontal scrolling
+        width: 320, // Fixed width for horizontal scrolling
         margin: const EdgeInsets.only(bottom: 20, right: 16), // Added right margin for horizontal spacing
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -744,6 +733,23 @@ class _WorkerHomeScreenState extends ConsumerState<WorkerHomeScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDCFCE7),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              price,
+                              style: const TextStyle(color: Color(0xFF15803D), fontSize: 13, fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
@@ -753,6 +759,7 @@ class _WorkerHomeScreenState extends ConsumerState<WorkerHomeScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (task['status']?.toString().toUpperCase() == 'COMPLETED')
                                   const Icon(Icons.check_circle_rounded, color: Colors.green, size: 12),
@@ -769,18 +776,6 @@ class _WorkerHomeScreenState extends ConsumerState<WorkerHomeScreen> {
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFDCFCE7),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              price,
-                              style: const TextStyle(color: Color(0xFF15803D), fontSize: 13, fontWeight: FontWeight.w900),
                             ),
                           ),
                         ],
@@ -854,24 +849,28 @@ class _WorkerHomeScreenState extends ConsumerState<WorkerHomeScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'SERVICE FOR',
-                            style: TextStyle(fontSize: 9, color: Colors.grey.shade400, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-                          ),
-                          Text(
-                            name, 
-                            style: const TextStyle(
-                              fontSize: 13, 
-                              fontWeight: FontWeight.w800, 
-                              color: Color(0xFF334155)
-                            )
-                          ),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'SERVICE FOR',
+                              style: TextStyle(fontSize: 9, color: Colors.grey.shade400, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                            ),
+                            Text(
+                              name, 
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13, 
+                                fontWeight: FontWeight.w800, 
+                                color: Color(0xFF334155)
+                              )
+                            ),
+                          ],
+                        ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 10),
                       
                       // 🔥 View Details Action
                       GestureDetector(

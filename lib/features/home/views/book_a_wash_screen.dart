@@ -52,6 +52,60 @@ class _BookAWashScreenState extends ConsumerState<BookAWashScreen> {
   String _selectedPaymentMethod = 'Cash';
   String? _fetchedCurrentLocation;
   String? _bookingId;
+  String? _logDocId;
+
+  @override
+  void initState() {
+    super.initState();
+    _createUserLog();
+  }
+
+  @override
+  void dispose() {
+    if (_currentStep != 2) {
+      _updateUserLogStatus('not confirmed');
+    }
+    super.dispose();
+  }
+
+  Future<void> _createUserLog() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final logRef = FirebaseFirestore.instance.collection('users_logs').doc();
+      _logDocId = logRef.id;
+
+      await logRef.set({
+        'logId': _logDocId,
+        'userId': user.uid,
+        'serviceId': widget.serviceId,
+        'serviceTitle': widget.title,
+        'price': widget.price,
+        'status': 'not confirmed',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error creating user log: $e');
+    }
+  }
+
+  Future<void> _updateUserLogStatus(String status) async {
+    if (_logDocId == null) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('users_logs')
+          .doc(_logDocId)
+          .update({
+            'status': status,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+    } catch (e) {
+      debugPrint('Error updating user log status: $e');
+    }
+  }
+
 
   double get _itemTotal => (widget.price * _quantity).toDouble();
 
@@ -115,6 +169,8 @@ class _BookAWashScreenState extends ConsumerState<BookAWashScreen> {
           .collection('bookings')
           .doc(bookingId)
           .set(bookingData);
+
+      await _updateUserLogStatus('booked');
 
       // 📧 Send Confirmation Email
       try {
@@ -1284,7 +1340,7 @@ class _BookAWashScreenState extends ConsumerState<BookAWashScreen> {
           elevation: 0,
         ),
         child: const Text(
-          'Confirm Payment',
+          'Confirm Booking',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
         ),
       );

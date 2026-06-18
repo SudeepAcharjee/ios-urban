@@ -13,6 +13,7 @@ import '../../auth/viewmodels/auth_viewmodel.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../home/views/chat_screen.dart';
 import 'worker_payment.dart';
+import '../../../core/services/notification_service.dart';
 
 class WorkerTaskDetailScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> taskData;
@@ -86,6 +87,24 @@ class _WorkerTaskDetailScreenState extends ConsumerState<WorkerTaskDetailScreen>
           .update(updateData);
 
       setState(() => _status = newStatus);
+
+      if (newStatus == 'Pending Verification') {
+        try {
+          final workerInfo = ref.read(userDataProvider).value;
+          final String workerId = workerInfo?['uid'] ?? workerInfo?['id'] ?? 'unknown';
+          final String workerName = workerInfo?['name'] ?? 'Worker';
+          final String bookingTitle = widget.taskData['title'] ?? 'Service';
+
+          await NotificationService.notifyAdminsAboutPendingVerification(
+            bookingId: bookingId,
+            bookingTitle: bookingTitle,
+            workerId: workerId,
+            workerName: workerName,
+          );
+        } catch (notifyErr) {
+          debugPrint('Failed to send admin notification: $notifyErr');
+        }
+      }
 
       if (mounted) {
         toastification.show(
@@ -1171,7 +1190,7 @@ class _WorkerTaskDetailScreenState extends ConsumerState<WorkerTaskDetailScreen>
                       ),
                       child: Row(
                         children: [
-                          Icon(_isPaid ? Icons.check_circle_rounded : Icons.hourglass_empty_rounded, 
+                          Icon(_isPaid ? Icons.check_circle_rounded : Icons.pending_actions_rounded, 
                                color: _isPaid ? Colors.green : Colors.orange),
                           const SizedBox(width: 12),
                           Expanded(
@@ -1224,13 +1243,14 @@ class _WorkerTaskDetailScreenState extends ConsumerState<WorkerTaskDetailScreen>
             // 📅 Date & Time
             _buildSection(
               title: 'Date & Time',
+              icon: Icons.calendar_today_rounded,
+              iconBgColor: const Color(0xFFFFF1F2),
+              iconColor: const Color(0xFFF43F5E),
               child: Container(
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
                 child: Row(
                   children: [
-                    const Icon(Icons.calendar_today_outlined, color: primaryColor),
-                    const SizedBox(width: 15),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

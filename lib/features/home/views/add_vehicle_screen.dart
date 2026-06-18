@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/vehicle_provider.dart';
@@ -346,6 +347,9 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
         TextField(
           controller: _makeController,
           style: const TextStyle(fontWeight: FontWeight.w500),
+          inputFormatters: [
+            LengthLimitingTextInputFormatter(30),
+          ],
           decoration: InputDecoration(
             hintText: 'e.g. Toyota',
             hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -363,6 +367,9 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
         TextField(
           controller: _modelController,
           style: const TextStyle(fontWeight: FontWeight.w500),
+          inputFormatters: [
+            LengthLimitingTextInputFormatter(30),
+          ],
           decoration: InputDecoration(
             hintText: 'e.g. Camry',
             hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -381,6 +388,10 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
           controller: _yearController,
           keyboardType: TextInputType.number,
           style: const TextStyle(fontWeight: FontWeight.w500),
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(4),
+          ],
           decoration: InputDecoration(
             hintText: 'e.g. 2022',
             hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -398,6 +409,9 @@ class _AddVehicleScreenState extends ConsumerState<AddVehicleScreen> {
         TextField(
           controller: _licenseController,
           style: const TextStyle(fontWeight: FontWeight.w500),
+          inputFormatters: [
+            LengthLimitingTextInputFormatter(15),
+          ],
           decoration: InputDecoration(
             hintText: 'e.g. ABC 1234',
             hintStyle: TextStyle(color: Colors.grey.shade400),

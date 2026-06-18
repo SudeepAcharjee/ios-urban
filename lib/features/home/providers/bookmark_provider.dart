@@ -37,6 +37,18 @@ class BookmarkService {
         ...service,
         'bookmarkedAt': FieldValue.serverTimestamp(),
       });
+
+      // Log the bookmark attempt to users_logs
+      final logRef = _firestore.collection('users_logs').doc();
+      await logRef.set({
+        'logId': logRef.id,
+        'userId': user.uid,
+        'serviceTitle': service['title'],
+        'price': service['price'],
+        'status': 'bookmarked',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     }
   }
 }

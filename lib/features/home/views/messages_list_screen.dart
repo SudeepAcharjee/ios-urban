@@ -60,7 +60,7 @@ class _MessagesListScreenState extends ConsumerState<MessagesListScreen> {
         id: 'offers/$_currentUserId',
         name: 'Special Offers',
         role: 'Promo',
-        lastMessage: 'Tap to chat',
+        lastMessage: '',
         time: '',
         unreadCount: 0,
         avatarType: 'icon',
@@ -111,7 +111,7 @@ class _MessagesListScreenState extends ConsumerState<MessagesListScreen> {
           if (mounted) {
             setState(() {
               _chats[i] = _chats[i].copyWith(
-                lastMessage: 'Tap to chat',
+                lastMessage: _chats[i].category == 'Promotions' ? '' : 'Tap to chat',
                 time: '',
                 unreadCount: 0,
               );
@@ -457,17 +457,19 @@ class _MessagesListScreenState extends ConsumerState<MessagesListScreen> {
                       ],
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    displayMsg,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: unreadCount > 0 ? const Color(0xFF1E293B) : Colors.grey.shade500,
-                      fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+                  if (displayMsg.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      displayMsg,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: unreadCount > 0 ? const Color(0xFF1E293B) : Colors.grey.shade500,
+                        fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),

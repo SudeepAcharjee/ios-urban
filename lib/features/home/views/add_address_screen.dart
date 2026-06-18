@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:toastification/toastification.dart';
+import 'package:geocoding/geocoding.dart';
 import '../providers/address_provider.dart';
 
 class AddAddressScreen extends ConsumerStatefulWidget {
@@ -203,6 +204,26 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
                         if (_addressController.text.isNotEmpty && _cityController.text.isNotEmpty) {
                           try {
                             setState(() => _isSaving = true);
+                            double? lat;
+                            double? lng;
+                            try {
+                              final query = '${_addressController.text.trim()}, ${_cityController.text.trim()}, ${_stateController.text.trim()}';
+                              final locations = await locationFromAddress(query);
+                              if (locations.isNotEmpty) {
+                                lat = locations.first.latitude;
+                                lng = locations.first.longitude;
+                              }
+                            } catch (_) {
+                              try {
+                                final queryFallback = '${_addressController.text.trim()}, ${_cityController.text.trim()}';
+                                final locationsFallback = await locationFromAddress(queryFallback);
+                                if (locationsFallback.isNotEmpty) {
+                                  lat = locationsFallback.first.latitude;
+                                  lng = locationsFallback.first.longitude;
+                                }
+                              } catch (_) {}
+                            }
+
                             final addressData = {
                               'type': _selectedType == 'Other' ? (_otherLabelController.text.trim().isNotEmpty ? _otherLabelController.text.trim() : 'Other') : _selectedType,
                               'houseNumber': _houseNumberController.text.trim(),
@@ -210,6 +231,8 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
                               'city': _cityController.text.trim(),
                               'state': _stateController.text.trim(),
                               'zip': _zipController.text.trim(),
+                              'latitude': lat,
+                              'longitude': lng,
                             };
 
                             if (_editingAddressId != null) {

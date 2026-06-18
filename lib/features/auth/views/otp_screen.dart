@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/custom_toast.dart';
 import 'complete_profile_screen.dart';
+import 'register_screen.dart';
 import 'location_request_screen.dart';
 import 'notification_request_screen.dart';
 import '../../home/views/main_screen.dart';
@@ -16,7 +17,18 @@ import 'dart:ui';
 class OtpScreen extends ConsumerStatefulWidget {
   final String email;
   final bool isRegistration;
-  const OtpScreen({super.key, required this.email, this.isRegistration = false});
+  final String? name;
+  final String? phone;
+  final String? password;
+
+  const OtpScreen({
+    super.key,
+    required this.email,
+    this.isRegistration = false,
+    this.name,
+    this.phone,
+    this.password,
+  });
 
   @override
   ConsumerState<OtpScreen> createState() => _OtpScreenState();
@@ -77,11 +89,40 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       if (mounted) {
         if (success) {
           if (widget.isRegistration) {
-            setState(() {
-              _isLoading = false;
-              _currentStep = 2;
-            });
+            try {
+              await ref.read(authViewModelProvider.notifier).register(
+                email: widget.email,
+                password: widget.password ?? '',
+                name: widget.name ?? '',
+                phone: widget.phone ?? '',
+                isOtpVerified: true,
+              );
+              
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                  _currentStep = 2;
+                });
+              }
+            } catch (e) {
+              if (mounted) {
+                setState(() => _isLoading = false);
+                CustomToast.error(context, 'Registration failed: $e');
+              }
+            }
           } else {
+            final user = FirebaseAuth.instance.currentUser;
+            if (user != null) {
+              try {
+                final workerDoc = await FirebaseFirestore.instance.collection('workers').doc(user.uid).get();
+                final String collectionName = workerDoc.exists ? 'workers' : 'users';
+                await FirebaseFirestore.instance.collection(collectionName).doc(user.uid).update({
+                  'isOtpVerified': true,
+                });
+              } catch (e) {
+                debugPrint('Error updating isOtpVerified: $e');
+              }
+            }
             CustomToast.success(context, 'OTP Verified Successfully!');
             _handleNavigation();
           }
@@ -215,52 +256,115 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final double screenWidth = size.width;
     final double hScale = screenHeight / 812.0;
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
-        children: [
-          // Background Blur
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                color: Colors.black.withOpacity(0.2),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        if (_currentStep == 1) {
+          setState(() {
+            _currentStep = 0;
+          });
+          return;
+        }
+        await FirebaseAuth.instance.signOut();
+        if (context.mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const RegisterScreen()),
+            (route) => false,
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Stack(
+          children: [
+            // Background Blur
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  color: Colors.black.withOpacity(0.2),
+                ),
               ),
             ),
-          ),
-          
-          Center(
-            child: SingleChildScrollView(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
-                padding: EdgeInsets.all(screenWidth * 0.08),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(32),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 20,
-                      spreadRadius: 5,
+            
+            if (_currentStep < 2)
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 16,
+                left: 16,
+                child: GestureDetector(
+                  onTap: () async {
+                    if (_currentStep == 1) {
+                      setState(() {
+                        _currentStep = 0;
+                      });
+                    } else {
+                      await FirebaseAuth.instance.signOut();
+                      if (context.mounted) {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                          (route) => false,
+                        );
+                      }
+                    }
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(8 * hScale.clamp(0.8, 1.2)),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
                     ),
-                  ],
+                    child: Icon(
+                      Icons.arrow_back_ios_new,
+                      color: Colors.black,
+                      size: 20 * hScale.clamp(0.8, 1.2),
+                    ),
+                  ),
                 ),
-                child: Material( // Added Material to fix text styling in transparent route
-                  color: Colors.transparent,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_currentStep == 0) _buildConfirmStep(primaryColor, hScale, screenHeight),
-                      if (_currentStep == 1) _buildOtpStep(primaryColor, hScale, screenHeight, screenWidth),
-                      if (_currentStep == 2) _buildSuccessStep(primaryColor, hScale, screenHeight),
+              ),
+            
+            Center(
+              child: SingleChildScrollView(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                  padding: EdgeInsets.all(screenWidth * 0.08),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
                     ],
+                  ),
+                  child: Material( // Added Material to fix text styling in transparent route
+                    color: Colors.transparent,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_currentStep == 0) _buildConfirmStep(primaryColor, hScale, screenHeight),
+                        if (_currentStep == 1) _buildOtpStep(primaryColor, hScale, screenHeight, screenWidth),
+                        if (_currentStep == 2) _buildSuccessStep(primaryColor, hScale, screenHeight),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -304,7 +408,16 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
           children: [
             Expanded(
               child: OutlinedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () async {
+                  await FirebaseAuth.instance.signOut();
+                  if (context.mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                      (route) => false,
+                    );
+                  }
+                },
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   side: BorderSide(color: primaryColor.withOpacity(0.5)),

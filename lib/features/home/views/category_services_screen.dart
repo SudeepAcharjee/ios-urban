@@ -6,6 +6,8 @@ import '../models/service_model.dart';
 import '../widgets/service_rating_row.dart';
 import '../viewmodels/category_provider.dart';
 import 'package:car_washing_service_app/core/providers/mode_provider.dart';
+import 'package:toastification/toastification.dart';
+import 'package:car_washing_service_app/features/home/providers/bookmark_provider.dart';
 
 class CategoryServicesScreen extends ConsumerWidget {
   final String categoryName;
@@ -205,6 +207,11 @@ class CategoryServicesScreen extends ConsumerWidget {
     required WidgetRef ref,
     required bool isOffline,
   }) {
+    final isBookmarked = ref.watch(bookmarksProvider).maybeWhen(
+      data: (bookmarks) => bookmarks.any((s) => s['title'] == service.name),
+      orElse: () => false,
+    );
+
     String discountStr = '';
     if (service.oldPrice.isNotEmpty) {
       final oldP = double.tryParse(service.oldPrice) ?? 0;
@@ -346,16 +353,40 @@ class CategoryServicesScreen extends ConsumerWidget {
                   Positioned(
                     top: 16,
                     right: 16,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2)),
-                        ],
+                    child: GestureDetector(
+                      onTap: () async {
+                        final cardData = {
+                          'title': service.name,
+                           'imagePath': service.image,
+                           'price': int.tryParse(service.price) ?? 0,
+                           'oldPrice': int.tryParse(service.oldPrice) ?? 0,
+                        };
+                        await BookmarkService.toggleBookmark(cardData);
+                        
+                        if (!context.mounted) return;
+                        toastification.show(
+                          context: context,
+                          type: isBookmarked ? ToastificationType.info : ToastificationType.success,
+                          style: ToastificationStyle.flatColored,
+                          title: Text(isBookmarked ? 'Removed from Bookmarks' : 'Saved to Bookmarks'),
+                          autoCloseDuration: const Duration(seconds: 2),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2)),
+                          ],
+                        ),
+                        child: Icon(
+                          isBookmarked ? Icons.favorite : Icons.favorite_border,
+                          color: isBookmarked ? Colors.red : Colors.grey,
+                          size: 20,
+                        ),
                       ),
-                      child: const Icon(Icons.favorite, color: Colors.red, size: 20),
                     ),
                   ),
                 ],

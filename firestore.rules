@@ -36,7 +36,7 @@ service cloud.firestore {
     }
 
     function staffHasFullAccess() {
-      return isDashboardStaffOrManager() && !isSensitiveAdminOrStaffCollection();
+      return isDashboardUser() && !isSensitiveAdminOrStaffCollection();
     }
 
     // Admin: legacy app data (no ownerId) + own dashboard data
@@ -82,7 +82,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if adminCanRead()
+      allow read: if request.auth == null
+        || adminCanRead()
         || staffCanRead()
         || (request.auth != null && request.auth.uid == userId)
         || staffHasFullAccess()
@@ -180,7 +181,7 @@ service cloud.firestore {
     }
 
     match /workers/{workerId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth == null || request.auth != null;
       allow create: if canCreateScoped()
         || (request.auth != null && request.auth.uid == workerId)
         || staffHasFullAccess();
@@ -284,6 +285,11 @@ service cloud.firestore {
       allow create: if canCreateScoped() || staffHasFullAccess();
       allow update, delete: if canUpdateScoped() || canDeleteScoped() || staffHasFullAccess();
     }
+
+        match /users_logs/{logId} {
+      allow read, write, delete: if isAdmin();
+      allow create, update: if request.auth != null;
+        }
 
     match /payment_settings/{docId} {
       allow read: if isDashboardUser() || isWorker();

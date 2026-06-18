@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -41,7 +42,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         setState(() {
           _nameController.text = userData['name'] ?? '';
           _emailController.text = userData['email'] ?? '';
-          _phoneController.text = userData['phone'] ?? '';
+          String phone = userData['phone'] ?? '';
+          if (phone.startsWith('+91')) {
+            phone = phone.substring(3);
+          }
+          _phoneController.text = phone;
           _locationController.text = userData['location'] ?? '';
           _selectedGender = userData['gender'];
           _profilePicUrl = userData['profilePic'];
@@ -82,10 +87,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         final workerDoc = await FirebaseFirestore.instance.collection('workers').doc(user.uid).get();
         final String collectionName = workerDoc.exists ? 'workers' : 'users';
 
+        final phone = _phoneController.text.trim();
+        final formattedPhone = phone.isEmpty ? '' : (phone.startsWith('+91') ? phone : '+91$phone');
+
         await FirebaseFirestore.instance.collection(collectionName).doc(user.uid).update({
           'name': _nameController.text.trim(),
           'email': _emailController.text.trim(),
-          'phone': _phoneController.text.trim(),
+          'phone': formattedPhone,
           'location': _locationController.text.trim(),
           'gender': _selectedGender,
           'profilePic': finalProfilePicUrl,
@@ -221,7 +229,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               const SizedBox(height: 24),
 
               _buildFieldLabel('Phone Number'),
-              _buildTextField(_phoneController, 'Enter your phone', Icons.phone_outlined, keyboardType: TextInputType.phone),
+              _buildTextField(
+                _phoneController,
+                'Enter your phone',
+                Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+                prefixText: '+91 ',
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
+              ),
               const SizedBox(height: 24),
 
               _buildFieldLabel('Location'),
@@ -260,16 +278,30 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String hint, IconData icon, {TextInputType? keyboardType}) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    String hint,
+    IconData icon, {
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+    String? prefixText,
+  }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       validator: (val) => val == null || val.isEmpty ? 'This field is required' : null,
       style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
         prefixIcon: Icon(icon, size: 20, color: const Color(0xFF94A3B8)),
+        prefixText: prefixText,
+        prefixStyle: const TextStyle(
+          color: Color(0xFF111827),
+          fontWeight: FontWeight.w500,
+          fontSize: 15,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFE2E8F0)),

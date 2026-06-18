@@ -232,8 +232,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   bool _offlineDialogShown = false;
   bool _wasOffline = false;
+  bool _wasWorkerOffline = false;
 
-  void _showOfflineDialog() {
+  void _showOfflineDialog({required bool isWorkerOffline}) {
     if (_offlineDialogShown || !mounted) return;
 
     _offlineDialogShown = true;
@@ -242,14 +243,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: Row(
-          children: const [
-            Icon(Icons.wifi_off_rounded, color: Color(0xFFD32F2F)),
-            SizedBox(width: 10),
-            Expanded(child: Text('You are currently offline')),
+          children: [
+            Icon(
+              isWorkerOffline ? Icons.cloud_off_rounded : Icons.wifi_off_rounded,
+              color: const Color(0xFFD32F2F),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                isWorkerOffline ? 'App is currently Offline' : 'You are currently offline',
+              ),
+            ),
           ],
         ),
-        content: const Text(
-          'Turn on your internet to access all the features of the app.',
+        content: Text(
+          isWorkerOffline
+              ? 'Services are temporarily offline due to worker unavailability. Please check back later.'
+              : 'Turn on your internet to access all the features of the app.',
         ),
       ),
     );
@@ -262,23 +272,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final isOfflineMode = ref.watch(modeProvider).value ?? false;
     final isConnected = ref.watch(connectivityProvider).value ?? true;
     final isOffline = isOfflineMode || !isConnected;
+    final isWorkerOffline = isOfflineMode && isConnected;
 
     if (!isOffline && _wasOffline && _offlineDialogShown) {
       // Internet came back online, close the dialog
       Navigator.of(context).pop();
       _offlineDialogShown = false;
       _wasOffline = false;
+      _wasWorkerOffline = false;
     } else if (isOffline) {
+      if (_offlineDialogShown && _wasWorkerOffline != isWorkerOffline) {
+        Navigator.of(context).pop();
+        _offlineDialogShown = false;
+      }
+
       _wasOffline = true;
+      _wasWorkerOffline = isWorkerOffline;
+
       if (!_offlineDialogShown) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            _showOfflineDialog();
+            _showOfflineDialog(isWorkerOffline: isWorkerOffline);
           }
         });
       }
     } else {
       _wasOffline = false;
+      _wasWorkerOffline = false;
     }
 
     return Scaffold(
@@ -1073,7 +1093,7 @@ class _CategoryItemState extends ConsumerState<CategoryItem> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Explore Services',
+                            'Explore',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 12,

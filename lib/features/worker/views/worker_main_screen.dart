@@ -34,7 +34,7 @@ class _WorkerMainScreenState extends ConsumerState<WorkerMainScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: (_selectedIndex == 0 || _selectedIndex == 2 || _selectedIndex == 4) ? null : AppBar(
+      appBar: _selectedIndex != 1 ? null : AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,

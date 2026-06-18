@@ -49,6 +49,7 @@ class _WorkerPaymentDetailsScreenState extends ConsumerState<WorkerPaymentDetail
   static const warningColor = Color(0xFFF59E0B);
   
   String _selectedFilter = 'All'; // 'All', 'Received', 'Pending'
+  String _selectedTimeFilter = 'All Time'; // 'All Time', 'Daily', 'Weekly', 'Monthly'
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +160,7 @@ class _WorkerPaymentDetailsScreenState extends ConsumerState<WorkerPaymentDetail
                 return bTime.compareTo(aTime);
               });
 
-              // Calculate stats
+              // Calculate stats based on time filter
               double totalUpiIncomeReceived = 0;
               double totalUpiIncomePending = 0;
               double totalCollectedUpi = 0;
@@ -173,7 +174,34 @@ class _WorkerPaymentDetailsScreenState extends ConsumerState<WorkerPaymentDetail
               int cashPendingCount = 0;
               double totalCashWorkerShare = 0;
 
-              for (var item in combinedList) {
+              // Filter overview and chart data by selected time period
+              final timeFilteredOverviewList = combinedList.where((item) {
+                bool matchesTime = true;
+                DateTime time = DateTime.now();
+                final timestamp = item['updatedAt'] ?? item['createdAt'];
+                if (timestamp is Timestamp) {
+                  time = timestamp.toDate();
+                } else {
+                  matchesTime = (_selectedTimeFilter == 'All Time');
+                }
+
+                if (matchesTime && _selectedTimeFilter != 'All Time') {
+                  final now = DateTime.now();
+                  if (_selectedTimeFilter == 'Daily') {
+                    final todayStart = DateTime(now.year, now.month, now.day);
+                    matchesTime = time.isAfter(todayStart) || time.isAtSameMomentAs(todayStart);
+                  } else if (_selectedTimeFilter == 'Weekly') {
+                    final sevenDaysAgo = now.subtract(const Duration(days: 7));
+                    matchesTime = time.isAfter(sevenDaysAgo);
+                  } else if (_selectedTimeFilter == 'Monthly') {
+                    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+                    matchesTime = time.isAfter(thirtyDaysAgo);
+                  }
+                }
+                return matchesTime;
+              }).toList();
+
+              for (var item in timeFilteredOverviewList) {
                 final method = (item['paymentMethod'] ?? 'upi').toString().toLowerCase();
                 final double amount = (item['amount'] is num) ? item['amount'].toDouble() : 0.0;
                 final double workerShare = (item['workerShare'] is num) ? item['workerShare'].toDouble() : 0.0;
@@ -203,8 +231,8 @@ class _WorkerPaymentDetailsScreenState extends ConsumerState<WorkerPaymentDetail
                 }
               }
 
-              // Filter documents based on selection
-              final filteredList = combinedList.where((item) {
+              // Filter documents based on status selection on top of time selection
+              final filteredList = timeFilteredOverviewList.where((item) {
                 final status = (item['settlementStatus'] ?? '').toString().toLowerCase();
                 final isSettled = (status == 'sent' || status == 'completed' || status == 'paid' || status == 'received');
                 
@@ -234,7 +262,14 @@ class _WorkerPaymentDetailsScreenState extends ConsumerState<WorkerPaymentDetail
                       totalCashWorkerShare: totalCashWorkerShare,
                     ),
 
+                    // 📊 Payment Methods Donut Graph View
+                    _buildGraphCard(
+                      upiAmount: totalCollectedUpi,
+                      cashAmount: totalCollectedCash,
+                    ),
+
                     // 🎛️ Filter Controls
+                    _buildTimeFilterRow(),
                     _buildFilterRow(),
 
                     const Padding(
@@ -1134,6 +1169,225 @@ class _WorkerPaymentDetailsScreenState extends ConsumerState<WorkerPaymentDetail
       ),
     );
   }
+
+  Widget _buildTimeFilterRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 4.0),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: ['All Time', 'Daily', 'Weekly', 'Monthly'].map((filter) {
+            final isSelected = _selectedTimeFilter == filter;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: ChoiceChip(
+                label: Text(
+                  filter,
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? Colors.white : const Color(0xFF475569),
+                  ),
+                ),
+                selected: isSelected,
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() {
+                      _selectedTimeFilter = filter;
+                    });
+                  }
+                },
+                selectedColor: primaryColor,
+                backgroundColor: Colors.white,
+                checkmarkColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                    color: isSelected ? Colors.transparent : const Color(0xFFE2E8F0),
+                  ),
+                ),
+                elevation: isSelected ? 4 : 0,
+                shadowColor: primaryColor.withOpacity(0.3),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGraphCard({required double upiAmount, required double cashAmount}) {
+    final double total = upiAmount + cashAmount;
+    final double upiPercent = total > 0 ? (upiAmount / total) * 100 : 0.0;
+    final double cashPercent = total > 0 ? (cashAmount / total) * 100 : 0.0;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Payment Methods Share',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  _selectedTimeFilter,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              SizedBox(
+                width: 100,
+                height: 100,
+                child: Stack(
+                  children: [
+                    CustomPaint(
+                      size: const Size(100, 100),
+                      painter: DonutChartPainter(upiValue: upiAmount, cashValue: cashAmount),
+                    ),
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            total > 0 ? '${upiPercent.toStringAsFixed(0)}%' : '0%',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF2029C5),
+                            ),
+                          ),
+                          const Text(
+                            'UPI',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 28),
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildLegendItem(
+                      color: const Color(0xFF2029C5),
+                      label: 'UPI Payouts',
+                      amount: upiAmount,
+                      percentage: upiPercent,
+                      icon: Icons.qr_code_2_rounded,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildLegendItem(
+                      color: const Color(0xFF10B981),
+                      label: 'Cash Income',
+                      amount: cashAmount,
+                      percentage: cashPercent,
+                      icon: Icons.payments_rounded,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegendItem({
+    required Color color,
+    required String label,
+    required double amount,
+    required double percentage,
+    required IconData icon,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 16),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF334155),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '₹${amount.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Text(
+          '${percentage.toStringAsFixed(1)}%',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFF0F172A),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _ShimmerContainer extends StatefulWidget {
@@ -1192,5 +1446,59 @@ class _ShimmerContainerState extends State<_ShimmerContainer> with SingleTickerP
         );
       },
     );
+  }
+}
+
+class DonutChartPainter extends CustomPainter {
+  final double upiValue;
+  final double cashValue;
+
+  DonutChartPainter({required this.upiValue, required this.cashValue});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double total = upiValue + cashValue;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    final strokeWidth = 12.0;
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    if (total == 0) {
+      paint.color = const Color(0xFFE2E8F0);
+      canvas.drawCircle(center, radius - strokeWidth / 2, paint);
+      return;
+    }
+
+    final double upiAngle = (upiValue / total) * 2 * 3.141592653589793;
+    final double cashAngle = (cashValue / total) * 2 * 3.141592653589793;
+
+    // Draw UPI segment
+    paint.color = const Color(0xFF2029C5);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
+      -3.141592653589793 / 2,
+      upiAngle,
+      false,
+      paint,
+    );
+
+    // Draw Cash segment
+    paint.color = const Color(0xFF10B981);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
+      -3.141592653589793 / 2 + upiAngle,
+      cashAngle,
+      false,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant DonutChartPainter oldDelegate) {
+    return oldDelegate.upiValue != upiValue || oldDelegate.cashValue != cashValue;
   }
 }

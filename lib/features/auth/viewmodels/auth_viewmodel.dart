@@ -82,13 +82,12 @@ class AuthViewModel extends AsyncNotifier<void> {
 
           // 3. Save FCM Token on successful login
           final token = await NotificationService.getToken();
-          if (token != null) {
-            final collectionName = isWorker ? 'workers' : 'users';
-            await _firestore.collection(collectionName).doc(uid).update({
-              'fcmToken': token,
-              'lastLogin': FieldValue.serverTimestamp(),
-            });
-          }
+          final collectionName = isWorker ? 'workers' : 'users';
+          await _firestore.collection(collectionName).doc(uid).update({
+            'isOtpVerified': false,
+            if (token != null) 'fcmToken': token,
+            'lastLogin': FieldValue.serverTimestamp(),
+          });
         }
         state = const AsyncData(null);
       } on FirebaseAuthException catch (e) {
@@ -123,6 +122,7 @@ class AuthViewModel extends AsyncNotifier<void> {
     required String password,
     required String name,
     required String phone,
+    bool isOtpVerified = true,
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
@@ -150,6 +150,7 @@ class AuthViewModel extends AsyncNotifier<void> {
                 'phone': phone.trim(),
                 'createdAt': FieldValue.serverTimestamp(),
                 'role': 'user',
+                'isOtpVerified': isOtpVerified,
               });
         }
       } on FirebaseAuthException catch (e) {
@@ -578,6 +579,7 @@ class AuthViewModel extends AsyncNotifier<void> {
             'profilePic': user.photoURL ?? '',
             'createdAt': FieldValue.serverTimestamp(),
             'role': 'user',
+            'isOtpVerified': false,
           });
           // Re-fetch doc after creation
           doc = await _firestore.collection('users').doc(user.uid).get();
@@ -586,13 +588,12 @@ class AuthViewModel extends AsyncNotifier<void> {
 
       // Save FCM Token to whichever collection the user belongs to
       final token = await NotificationService.getToken();
-      if (token != null) {
-        final collectionName = isWorker ? 'workers' : 'users';
-        await _firestore.collection(collectionName).doc(user.uid).update({
-          'fcmToken': token,
-          'lastLogin': FieldValue.serverTimestamp(),
-        });
-      }
+      final collectionName = isWorker ? 'workers' : 'users';
+      await _firestore.collection(collectionName).doc(user.uid).update({
+        'isOtpVerified': false,
+        if (token != null) 'fcmToken': token,
+        'lastLogin': FieldValue.serverTimestamp(),
+      });
     }
   }
 }

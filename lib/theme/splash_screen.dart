@@ -5,6 +5,7 @@ import '../features/onboarding/views/onboarding_screen.dart';
 import '../features/home/views/main_screen.dart';
 import '../features/auth/views/login_screen.dart';
 import '../features/auth/views/complete_profile_screen.dart';
+import '../features/auth/views/otp_screen.dart';
 import '../features/auth/views/location_request_screen.dart';
 import '../features/auth/views/notification_request_screen.dart';
 import '../core/services/preference_service.dart';
@@ -97,7 +98,14 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
               final bool hasLocation = data['location'] != null || data['latitude'] != null;
               final bool hasNotifications = data['notificationsEnabled'] != null;
 
-              if (!hasProfile) {
+              final bool isOtpVerified = data['isOtpVerified'] ?? true;
+
+              if (!isOtpVerified) {
+                targetScreen = OtpScreen(
+                  email: data['email'] ?? '',
+                  isRegistration: !hasProfile,
+                );
+              } else if (!hasProfile) {
                 targetScreen = const CompleteProfileScreen();
               } else if (isWorkerRole) {
                 // Workers go straight to their dashboard after profile completion

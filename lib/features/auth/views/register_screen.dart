@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/custom_toast.dart';
 import '../viewmodels/auth_viewmodel.dart';
@@ -23,6 +25,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isCheckingEmail = false;
 
   @override
   void dispose() {
@@ -32,6 +35,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleSocialRegister(Future<void> Function() registerMethod) async {
+    try {
+      await registerMethod();
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser != null && firebaseUser.email != null && mounted) {
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            opaque: false,
+            pageBuilder: (context, _, __) => OtpScreen(email: firebaseUser.email!),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomToast.error(context, e.toString());
+      }
+    }
   }
 
   @override
@@ -50,47 +75,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
       if (next is AsyncError && (previous is! AsyncError || previous.error != next.error)) {
         CustomToast.error(context, next.error.toString());
-      }
-      if (next.hasValue && !next.isLoading && !next.hasError && (previous == null || previous.isLoading)) {
-        // If email controller is empty, it was likely a social sign-in from this screen
-        if (_emailController.text.isEmpty) {
-          final user = FirebaseAuth.instance.currentUser;
-          if (user != null && user.email != null) {
-            Future.microtask(() {
-              if (context.mounted) {
-                Navigator.of(context).push(
-                  PageRouteBuilder(
-                    opaque: false,
-                    pageBuilder: (context, _, __) => OtpScreen(email: user.email!),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      return FadeTransition(opacity: animation, child: child);
-                    },
-                  ),
-                );
-              }
-            });
-          } else {
-            CustomToast.error(context, 'Social login failed: Email not found.');
-          }
-        } else {
-          Future.microtask(() {
-            if (context.mounted) {
-              CustomToast.success(context, 'Account created successfully!');
-              Navigator.of(context).push(
-                PageRouteBuilder(
-                  opaque: false,
-                  pageBuilder: (context, _, __) => OtpScreen(
-                    email: _emailController.text,
-                    isRegistration: true,
-                  ),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    return FadeTransition(opacity: animation, child: child);
-                  },
-                ),
-              );
-            }
-          });
-        }
       }
     });
 
@@ -145,7 +129,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             width: 22 * hScale.clamp(0.9, 1.1),
                           ),
                           label: 'Continue with Google',
-                          onPressed: () => ref.read(authViewModelProvider.notifier).signInWithGoogle(isRegistration: true).catchError((_) {}),
+                          onPressed: () => _handleSocialRegister(() => ref.read(authViewModelProvider.notifier).signInWithGoogle(isRegistration: true)),
                           hScale: hScale,
                         ),
                         if (Platform.isIOS) ...[
@@ -157,7 +141,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               color: Colors.white,
                             ),
                             label: 'Continue with Apple',
-                            onPressed: () => ref.read(authViewModelProvider.notifier).signInWithApple(isRegistration: true).catchError((_) {}),
+                            onPressed: () => _handleSocialRegister(() => ref.read(authViewModelProvider.notifier).signInWithApple(isRegistration: true)),
                             backgroundColor: Colors.black,
                             contentColor: Colors.white,
                             hScale: hScale,
@@ -203,6 +187,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           hintText: 'Mobile Number',
                           keyboardType: TextInputType.phone,
                           hScale: hScale,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(10),
+                          ],
                           prefix: Padding(
                             padding: const EdgeInsets.only(right: 8.0),
                             child: Text(
@@ -252,33 +240,80 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           width: double.infinity,
                           height: (screenHeight * 0.07).clamp(55, 70),
                           child: ElevatedButton(
-                            onPressed: authState.isLoading
+                            onPressed: (authState.isLoading || _isCheckingEmail)
                                 ? null
-                                  : () {
-                                    if (_passwordController.text.length < 6) {
-                                      CustomToast.error(context, 'Password must be at least 6 characters');
-                                      return;
-                                    }
-                                    if (_passwordController.text != _confirmPasswordController.text) {
-                                      CustomToast.error(context, 'Passwords do not match');
-                                      return;
-                                    }
-                                    ref.read(authViewModelProvider.notifier).register(
-                                          email: _emailController.text,
-                                          password: _passwordController.text,
-                                          name: _nameController.text,
-                                          phone: '+91${_phoneController.text.trim()}',
-                                        );
-                                  },
+                                  : () async {
+                                      final name = _nameController.text.trim();
+                                      final email = _emailController.text.trim().toLowerCase();
+                                      final phone = _phoneController.text.trim();
+                                      final password = _passwordController.text;
+
+                                      if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
+                                        CustomToast.error(context, 'Please fill all fields');
+                                        return;
+                                      }
+                                      if (password.length < 6) {
+                                        CustomToast.error(context, 'Password must be at least 6 characters');
+                                        return;
+                                      }
+                                      if (password != _confirmPasswordController.text) {
+                                        CustomToast.error(context, 'Passwords do not match');
+                                        return;
+                                      }
+
+                                      setState(() => _isCheckingEmail = true);
+                                      try {
+                                        final usersQuery = await FirebaseFirestore.instance
+                                            .collection('users')
+                                            .where('email', isEqualTo: email)
+                                            .get();
+                                        final workersQuery = await FirebaseFirestore.instance
+                                            .collection('workers')
+                                            .where('email', isEqualTo: email)
+                                            .get();
+
+                                        if (usersQuery.docs.isNotEmpty || workersQuery.docs.isNotEmpty) {
+                                          if (mounted) {
+                                            CustomToast.error(context, 'This email is already registered.');
+                                            setState(() => _isCheckingEmail = false);
+                                          }
+                                          return;
+                                        }
+
+                                        if (mounted) {
+                                          setState(() => _isCheckingEmail = false);
+                                          Navigator.of(context).push(
+                                            PageRouteBuilder(
+                                              opaque: false,
+                                              pageBuilder: (context, _, __) => OtpScreen(
+                                                email: email,
+                                                isRegistration: true,
+                                                name: name,
+                                                phone: '+91$phone',
+                                                password: password,
+                                              ),
+                                              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                                return FadeTransition(opacity: animation, child: child);
+                                              },
+                                            ),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        if (mounted) {
+                                          CustomToast.error(context, 'Error checking email: $e');
+                                          setState(() => _isCheckingEmail = false);
+                                        }
+                                      }
+                                    },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: primaryColor,
                               foregroundColor: Colors.white,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(14),
                               ),
                             ),
-                            child: authState.isLoading
+                            child: (authState.isLoading || _isCheckingEmail)
                                 ? const CircularProgressIndicator(color: Colors.white)
                                 : Text(
                                     'Signup',
@@ -342,6 +377,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     VoidCallback? onToggleVisibility,
     TextInputType keyboardType = TextInputType.text,
     Widget? prefix,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -353,6 +389,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
         style: TextStyle(
           fontSize: 16 * hScale.clamp(0.9, 1.1),
           color: const Color(0xFF1A1A1A),

@@ -321,7 +321,7 @@ class ProfileScreen extends ConsumerWidget {
                                             borderRadius: BorderRadius.circular(20),
                                           ),
                                           child: const Text(
-                                            'View & manage your account',
+                                            'Manage Account',
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontSize: 12,
