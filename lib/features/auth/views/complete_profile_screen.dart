@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/services/cloudinary_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/utils/custom_toast.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import 'location_request_screen.dart';
@@ -19,11 +20,19 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
+  final _otpController = TextEditingController();
   String? _selectedGender;
   File? _imageFile;
   final _picker = ImagePicker();
   bool _isUploading = false;
   String? _socialImageUrl;
+
+  bool _isPhoneVerified = false;
+  bool _isSendingOtp = false;
+  bool _isVerifyingOtp = false;
+  bool _otpSent = false;
+  String? _verificationId;
+  String? _verifiedNumber;
 
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -34,11 +43,151 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     }
   }
 
+  Future<void> _sendOtp() async {
+    final phone = _phoneController.text.trim();
+    if (phone.length != 10) {
+      CustomToast.error(context, 'Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    setState(() {
+      _isSendingOtp = true;
+    });
+
+    try {
+      final formattedPhone = '+91$phone';
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: formattedPhone,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          // Auto-resolution or instant verification
+          try {
+            final user = FirebaseAuth.instance.currentUser;
+            if (user != null) {
+              await user.linkWithCredential(credential);
+            }
+            setState(() {
+              _isPhoneVerified = true;
+              _otpSent = false;
+              _verifiedNumber = phone;
+              _isSendingOtp = false;
+            });
+            CustomToast.success(context, 'Phone number verified automatically!');
+          } catch (e) {
+            // Already linked or error linking
+            setState(() {
+              _isPhoneVerified = true;
+              _otpSent = false;
+              _verifiedNumber = phone;
+              _isSendingOtp = false;
+            });
+          }
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          setState(() {
+            _isSendingOtp = false;
+          });
+          CustomToast.error(context, e.message ?? 'Verification failed. Please try again.');
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          setState(() {
+            _verificationId = verificationId;
+            _otpSent = true;
+            _isSendingOtp = false;
+          });
+          CustomToast.success(context, 'OTP sent successfully!');
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+        },
+      );
+    } catch (e) {
+      setState(() {
+        _isSendingOtp = false;
+      });
+      CustomToast.error(context, 'Error sending OTP: $e');
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    final code = _otpController.text.trim();
+    if (code.length != 6) {
+      CustomToast.error(context, 'Please enter a 6-digit OTP');
+      return;
+    }
+
+    setState(() {
+      _isVerifyingOtp = true;
+    });
+
+    try {
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: code,
+      );
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          await user.linkWithCredential(credential);
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'provider-already-linked') {
+            // Already linked, we can proceed
+          } else if (e.code == 'credential-already-in-use') {
+            // If already associated with another account, sign in or let user know
+            // For profile completion page, we'll continue since the credentials are valid
+          } else {
+            rethrow;
+          }
+        }
+      }
+
+      setState(() {
+        _isPhoneVerified = true;
+        _otpSent = false;
+        _verifiedNumber = _phoneController.text.trim();
+        _isVerifyingOtp = false;
+      });
+      CustomToast.success(context, 'Phone number verified successfully!');
+    } catch (e) {
+      setState(() {
+        _isVerifyingOtp = false;
+      });
+      CustomToast.error(context, 'Invalid OTP. Please check and try again.');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneController.addListener(_onPhoneChanged);
+  }
+
+  void _onPhoneChanged() {
+    final text = _phoneController.text.trim();
+    if (text != _verifiedNumber) {
+      if (mounted) {
+        setState(() {
+          _isPhoneVerified = false;
+          _otpSent = false;
+        });
+      }
+    } else if (_verifiedNumber != null && text == _verifiedNumber) {
+      if (mounted) {
+        setState(() {
+          _isPhoneVerified = true;
+          _otpSent = false;
+        });
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _phoneController.removeListener(_onPhoneChanged);
     _nameController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
 
@@ -64,7 +213,6 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
               phone = phone.substring(3);
             }
             _phoneController.text = phone;
-            // If phone exists in DB, we consider it verified for this session
           }
           if (_socialImageUrl == null && data['profilePic'] != null && data['profilePic'].toString().isNotEmpty) {
             _socialImageUrl = data['profilePic'];
@@ -207,6 +355,11 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                     return;
                   }
 
+                  if (!_isPhoneVerified) {
+                    CustomToast.error(context, 'Please verify your phone number first');
+                    return;
+                  }
+
                   try {
                     setState(() => _isUploading = true);
                     
@@ -333,6 +486,9 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
   }
 
   Widget _buildPhoneField(double hScale) {
+    const primaryColor = Color(0xFF2029C5);
+    final isPhoneValid = _phoneController.text.trim().length == 10;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -340,6 +496,9 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
           decoration: BoxDecoration(
             color: Colors.grey.shade50,
             borderRadius: BorderRadius.circular(12),
+            border: _isPhoneVerified
+                ? Border.all(color: Colors.green.withOpacity(0.3))
+                : null,
           ),
           child: Row(
             children: [
@@ -359,12 +518,16 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   maxLength: 10,
+                  readOnly: _isPhoneVerified,
                   scrollPadding: EdgeInsets.only(bottom: 140 * hScale.clamp(0.8, 1.2)),
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
                     LengthLimitingTextInputFormatter(10),
                   ],
-                  style: TextStyle(fontSize: 16 * hScale.clamp(0.9, 1.1)),
+                  style: TextStyle(
+                    fontSize: 16 * hScale.clamp(0.9, 1.1),
+                    color: _isPhoneVerified ? Colors.grey.shade600 : Colors.black,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'Enter Phone Number',
                     counterText: '',
@@ -374,10 +537,120 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                   ),
                 ),
               ),
+              if (_isPhoneVerified)
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16 * hScale.clamp(0.8, 1.2)),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green, size: 20),
+                      SizedBox(width: 6),
+                      Text(
+                        'Verified',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (_isSendingOtp)
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16 * hScale.clamp(0.8, 1.2)),
+                  child: const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: primaryColor),
+                  ),
+                )
+              else if (isPhoneValid)
+                TextButton(
+                  onPressed: _sendOtp,
+                  child: Text(
+                    _otpSent ? 'Resend' : 'Verify',
+                    style: const TextStyle(
+                      color: primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
+        if (_otpSent && !_isPhoneVerified)
+          _buildOtpField(hScale),
       ],
+    );
+  }
+
+  Widget _buildOtpField(double hScale) {
+    const primaryColor = Color(0xFF2029C5);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      margin: EdgeInsets.only(top: 15.0 * hScale),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildLabel('Verification Code', hScale),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: primaryColor.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _otpController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(6),
+                    ],
+                    style: TextStyle(fontSize: 16 * hScale.clamp(0.9, 1.1), letterSpacing: 4),
+                    decoration: InputDecoration(
+                      hintText: 'Enter 6-digit OTP',
+                      counterText: '',
+                      hintStyle: TextStyle(
+                        color: Colors.grey.shade400, 
+                        fontSize: 15 * hScale.clamp(0.9, 1.1),
+                        letterSpacing: 0,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 20 * hScale.clamp(0.8, 1.2), 
+                        vertical: 15 * hScale.clamp(0.8, 1.2)
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10 * hScale.clamp(0.8, 1.2)),
+                  child: _isVerifyingOtp
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(color: primaryColor, strokeWidth: 2),
+                        )
+                      : TextButton(
+                          onPressed: _verifyOtp,
+                          child: const Text(
+                            'Verify OTP',
+                            style: TextStyle(
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

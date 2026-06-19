@@ -231,19 +231,34 @@ class _MessagesListScreenState extends ConsumerState<MessagesListScreen> {
         data: (bookings) {
           final dynamicChats = List<ChatSummary>.from(_chats);
           
-          // Deduplicate by workerId or workerName
+          // Deduplicate by worker, only keeping workers with at least one active (non-completed/non-cancelled) booking
           final Map<String, Map<String, dynamic>> uniqueWorkerBookings = {};
+          final Map<String, List<Map<String, dynamic>>> bookingsByWorker = {};
+          
           for (var booking in bookings) {
             final workerId = booking['workerId'] as String?;
-            final status = booking['status'] as String?;
-            
-            if (status != 'Cancelled' && (workerId != null || booking['workerName'] != null)) {
-              final String key = workerId ?? (booking['workerName'] as String);
-              if (!uniqueWorkerBookings.containsKey(key)) {
-                uniqueWorkerBookings[key] = booking;
-              }
+            final workerName = booking['workerName'] as String?;
+            if (workerId != null || workerName != null) {
+              final String key = workerId ?? workerName!;
+              bookingsByWorker.putIfAbsent(key, () => []).add(booking);
             }
           }
+
+          bookingsByWorker.forEach((key, workerBookings) {
+            Map<String, dynamic>? activeBooking;
+            for (var booking in workerBookings) {
+              final String status = (booking['status'] as String? ?? '').toUpperCase();
+              if (status != 'COMPLETED' && 
+                  status != 'JOB COMPLETED' && 
+                  status != 'CANCELLED') {
+                activeBooking = booking;
+                break;
+              }
+            }
+            if (activeBooking != null) {
+              uniqueWorkerBookings[key] = activeBooking;
+            }
+          });
 
           for (var booking in uniqueWorkerBookings.values) {
             final workerName = booking['workerName'] as String? ?? 'Provider';

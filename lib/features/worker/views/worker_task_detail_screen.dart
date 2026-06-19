@@ -33,6 +33,9 @@ class _WorkerTaskDetailScreenState extends ConsumerState<WorkerTaskDetailScreen>
   bool _isUpdating = false;
   bool _hasUploadedProof = false;
   bool _isPaid = false;
+  double _totalPrice = 0.0;
+  double _extraCharge = 0.0;
+  String _extraChargeReason = '';
 
   bool get _shouldHideCustomerAndLocation => _status == 'Completed' || (_status == 'Pending Verification' && _isPaid);
 
@@ -43,6 +46,9 @@ class _WorkerTaskDetailScreenState extends ConsumerState<WorkerTaskDetailScreen>
     _hasUploadedProof = widget.taskData['proofUrls'] != null && 
         (widget.taskData['proofUrls'] as List).isNotEmpty;
     _isPaid = widget.taskData['paymentStatus'] == 'Paid';
+    _totalPrice = (widget.taskData['totalPrice'] as num? ?? widget.taskData['price'] as num? ?? 0.0).toDouble();
+    _extraCharge = (widget.taskData['extraCharge'] as num? ?? 0.0).toDouble();
+    _extraChargeReason = widget.taskData['extraChargeReason'] as String? ?? '';
     _getCoordinatesFromAddress();
   }
 
@@ -128,6 +134,14 @@ class _WorkerTaskDetailScreenState extends ConsumerState<WorkerTaskDetailScreen>
     } finally {
       if (mounted) setState(() => _isUpdating = false);
     }
+  }
+
+  Map<String, dynamic> _getUpdatedTaskData() {
+    final Map<String, dynamic> updated = Map<String, dynamic>.from(widget.taskData);
+    updated['totalPrice'] = _totalPrice;
+    updated['extraCharge'] = _extraCharge;
+    updated['extraChargeReason'] = _extraChargeReason;
+    return updated;
   }
 
   Future<void> _showBeforeServiceDialog() async {
@@ -422,6 +436,159 @@ class _WorkerTaskDetailScreenState extends ConsumerState<WorkerTaskDetailScreen>
     } else {
       throw 'Failed to upload before-service images.';
     }
+  }
+
+  Future<void> _showExtraChargeDialog() async {
+    final formKey = GlobalKey<FormState>();
+    final amountController = TextEditingController(text: '20'); // Default to 20
+    final reasonController = TextEditingController();
+    bool isSavingCharge = false;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Row(
+            children: [
+              Icon(Icons.add_circle_outline_rounded, color: Colors.orange, size: 28),
+              SizedBox(width: 10),
+              Text(
+                'Add Extra Charge',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ],
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Add extra charges (e.g. for materials like fan wires) directly to the booking total.',
+                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Amount (₹)',
+                    labelStyle: const TextStyle(color: Color(0xFF64748B)),
+                    prefixIcon: const Icon(Icons.currency_rupee_rounded, size: 18),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.orange),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter an amount';
+                    }
+                    final amt = double.tryParse(value);
+                    if (amt == null || amt <= 0) {
+                      return 'Enter a valid positive number';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: reasonController,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: 'Reason / Description',
+                    labelStyle: const TextStyle(color: Color(0xFF64748B)),
+                    hintText: 'e.g. Extra wires for fan',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.orange),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter a description';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSavingCharge ? null : () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: isSavingCharge
+                  ? null
+                  : () async {
+                      if (formKey.currentState?.validate() ?? false) {
+                        setDialogState(() => isSavingCharge = true);
+                        try {
+                          final double enteredAmt = double.parse(amountController.text.trim());
+                          final String enteredReason = reasonController.text.trim();
+                          final bookingId = widget.taskData['id'];
+
+                          String newReason = enteredReason;
+                          if (_extraChargeReason.isNotEmpty) {
+                            newReason = '$_extraChargeReason, $enteredReason';
+                          }
+
+                          await FirebaseFirestore.instance
+                              .collection('bookings')
+                              .doc(bookingId)
+                              .update({
+                            'extraCharge': FieldValue.increment(enteredAmt),
+                            'extraChargeReason': newReason,
+                            'totalPrice': FieldValue.increment(enteredAmt),
+                          });
+
+                          if (mounted) {
+                            setState(() {
+                              _extraCharge += enteredAmt;
+                              _totalPrice += enteredAmt;
+                              _extraChargeReason = newReason;
+                            });
+
+                            toastification.show(
+                              context: context,
+                              type: ToastificationType.success,
+                              title: const Text('Extra Charge Added!'),
+                              description: Text('Added ₹${enteredAmt.toInt()} to the total price.'),
+                              autoCloseDuration: const Duration(seconds: 3),
+                            );
+
+                            Navigator.pop(context);
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to add charge: $e')),
+                            );
+                          }
+                        } finally {
+                          setDialogState(() => isSavingCharge = false);
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: isSavingCharge
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Add Charge', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _showCompleteServiceDialog() async {
@@ -810,7 +977,7 @@ class _WorkerTaskDetailScreenState extends ConsumerState<WorkerTaskDetailScreen>
     final String bookingId = widget.taskData['id'] ?? 'ID Not Available';
     final String address = widget.taskData['address'] ?? 'Location not specified';
     final String time = widget.taskData['time'] ?? 'Time not specified';
-    final String price = '₹${widget.taskData['totalPrice'] ?? '0'}';
+    final String price = '₹${_totalPrice.toString().replaceAll(RegExp(r'\.0$'), '')}';
 
     String formattedDate = 'Date not available';
     final dynamic timestamp = widget.taskData['updatedAt'] ?? widget.taskData['createdAt'];
@@ -1151,6 +1318,13 @@ class _WorkerTaskDetailScreenState extends ConsumerState<WorkerTaskDetailScreen>
                       _status == 'In Progress' ? null : () => _showBeforeServiceDialog()
                     ),
                     const SizedBox(height: 12),
+                    _buildActionButton(
+                      'Add Extra Charge', 
+                      Icons.add_circle_outline_rounded, 
+                      primaryColor, 
+                      () => _showExtraChargeDialog()
+                    ),
+                    const SizedBox(height: 12),
                     _hasUploadedProof
                         ? _buildActionButton(
                             'Continue to Payment', 
@@ -1160,7 +1334,7 @@ class _WorkerTaskDetailScreenState extends ConsumerState<WorkerTaskDetailScreen>
                               final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => WorkerPaymentScreen(taskData: widget.taskData),
+                                  builder: (context) => WorkerPaymentScreen(taskData: _getUpdatedTaskData()),
                                 ),
                               );
                               if (result == true && mounted) {
@@ -1218,7 +1392,7 @@ class _WorkerTaskDetailScreenState extends ConsumerState<WorkerTaskDetailScreen>
                           final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => WorkerPaymentScreen(taskData: widget.taskData),
+                              builder: (context) => WorkerPaymentScreen(taskData: _getUpdatedTaskData()),
                             ),
                           );
                           if (result == true && mounted) {

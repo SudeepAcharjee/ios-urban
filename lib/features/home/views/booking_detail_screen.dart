@@ -95,7 +95,16 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     const primaryGreen = Color(0xFF2029C5);
     
     final String title = _bookingData['title'] ?? 'Service';
-    final int price = (_bookingData['totalPrice'] as num? ?? _bookingData['price'] as num? ?? 0).toInt();
+    final int originalPrice = (_bookingData['totalPrice'] as num? ?? _bookingData['price'] as num? ?? 0).toInt();
+    final int originalVisitationFee = (_bookingData['visitationFee'] as num? ?? 79).toInt();
+    final int originalPlatformFee = (_bookingData['platformFee'] as num? ?? 36).toInt();
+    final int originalTaxFee = (_bookingData['taxFee'] as num? ?? 13).toInt();
+    final int discountAmount = (_bookingData['discountAmount'] as num? ?? 0).toInt();
+    final int extraCharge = (_bookingData['extraCharge'] as num? ?? 0).toInt();
+    final int itemTotal = _bookingData['quantity'] != null
+        ? ((_bookingData['price'] as num? ?? 0).toInt() * (_bookingData['quantity'] as num? ?? 1).toInt())
+        : (originalPrice - originalVisitationFee - originalPlatformFee - originalTaxFee + discountAmount - extraCharge);
+    final int grandTotal = itemTotal - discountAmount + extraCharge;
     final String status = _bookingData['status'] ?? 'Pending';
     final currentStatus = status.toUpperCase();
 
@@ -214,7 +223,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
                       const SizedBox(height: 5),
                       Text(
-                        '₹$price',
+                        '₹$grandTotal',
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -492,9 +501,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 15),
-            _buildPaymentRow('Item Total', '₹${price + 10}', primaryGreen),
-            _buildPaymentRow('Discount', '₹10', primaryGreen),
-            _buildPaymentRow('Visiting Fee', 'Free', primaryGreen, isFree: true),
+            _buildPaymentRow('Item Total', '₹$itemTotal', primaryGreen),
+            _buildPaymentRow('Visitation Fee', 'Free', const Color(0xFF10B981), isFree: true),
+            _buildPaymentRow('Platform Fee', 'Free', const Color(0xFF10B981), isFree: true),
+            _buildPaymentRow('Est Govt. taxes', 'Free', const Color(0xFF10B981), isFree: true),
+            if (discountAmount > 0)
+              _buildPaymentRow('Discount', '-₹$discountAmount', primaryGreen),
+            if (extraCharge > 0)
+              _buildPaymentRow('Extra Charges (${_bookingData['extraChargeReason']?.toString().isNotEmpty == true ? _bookingData['extraChargeReason'] : 'Additional item/service'})', '₹$extraCharge', primaryGreen),
             const Divider(height: 30),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -504,7 +518,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  '₹$price',
+                  '₹$grandTotal',
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryGreen),
                 ),
               ],
@@ -597,13 +611,16 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              color: isFree ? themeColor : Colors.grey.shade600,
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 16,
+                color: isFree ? themeColor : Colors.grey.shade600,
+              ),
             ),
           ),
+          const SizedBox(width: 16),
           Text(
             value,
             style: TextStyle(

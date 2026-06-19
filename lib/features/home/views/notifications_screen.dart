@@ -5,6 +5,8 @@ import '../models/notification_model.dart';
 import 'package:intl/intl.dart';
 import 'chat_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'booking_detail_screen.dart';
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
@@ -291,15 +293,39 @@ class NotificationsScreen extends ConsumerWidget {
     Color textPrimary,
     Color textSecondary,
   ) {
-    final iconInfo = _getIconInfo(notification.type);
+    final iconInfo = _getIconInfo(notification);
     
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         if (!notification.isRead) {
           ref.read(notificationActionsProvider).markAsRead(notification.id);
         }
 
-        if (notification.type == 'chat') {
+        debugPrint('Notification tapped: ID=${notification.id}, Type=${notification.type}, Title="${notification.title}", SenderID=${notification.senderId}, BookingID=${notification.bookingId}');
+        final bool isAdminOrSupport = notification.type == 'support' ||
+            notification.type == 'admin' ||
+            notification.senderId == 'admin' ||
+            notification.senderId == 'support' ||
+            notification.title.toLowerCase().contains('admin') ||
+            notification.title.toLowerCase().contains('support') ||
+            notification.title.toLowerCase().contains('urban services');
+
+        if (isAdminOrSupport) {
+          final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatScreen(
+                providerName: 'Urban Services',
+                providerRole: 'Official Support',
+                bookingId: 'messages/$userId',
+                avatarType: 'icon',
+                avatarIcon: Icons.headset_mic_rounded,
+                avatarBgColor: primaryColor,
+              ),
+            ),
+          );
+        } else if (notification.type == 'chat') {
           final String providerName = notification.title.replaceAll('New Message from ', '').trim();
           final String? recipientId = notification.senderId;
 
@@ -321,21 +347,66 @@ class NotificationsScreen extends ConsumerWidget {
               ),
             );
           }
-        } else if (notification.type == 'support') {
-          final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChatScreen(
-                providerName: 'Urban Services',
-                providerRole: 'Official Support',
-                bookingId: 'support_chats/$userId',
-                avatarType: 'icon',
-                avatarIcon: Icons.headset_mic_rounded,
-                avatarBgColor: primaryColor,
+        } else {
+          final String? bookingId = notification.bookingId;
+          final bool isBooking = bookingId != null &&
+              bookingId.isNotEmpty &&
+              !bookingId.startsWith('direct_chats') &&
+              !bookingId.startsWith('support_chats') &&
+              !bookingId.startsWith('messages');
+
+          if (isBooking) {
+            final String cleanedBookingId = bookingId.split('/').last;
+
+            // Show a progress indicator/dialog
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => Center(
+                child: CircularProgressIndicator(color: primaryColor),
               ),
-            ),
-          );
+            );
+
+            try {
+              final doc = await FirebaseFirestore.instance
+                  .collection('bookings')
+                  .doc(cleanedBookingId)
+                  .get();
+
+              if (context.mounted) {
+                Navigator.pop(context); // Dismiss loading dialog
+              }
+
+              if (doc.exists && doc.data() != null) {
+                final bookingData = doc.data()!;
+                bookingData['id'] = doc.id;
+
+                if (context.mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BookingDetailScreen(
+                        bookingData: bookingData,
+                      ),
+                    ),
+                  );
+                }
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Booking details not found')),
+                  );
+                }
+              }
+            } catch (e) {
+              if (context.mounted) {
+                Navigator.pop(context); // Dismiss loading dialog
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error loading booking: $e')),
+                );
+              }
+            }
+          }
         }
       },
       child: Container(
@@ -461,7 +532,32 @@ class NotificationsScreen extends ConsumerWidget {
     );
   }
 
-  _IconInfo _getIconInfo(String type) {
+  _IconInfo _getIconInfo(NotificationModel notification) {
+    final type = notification.type;
+    final title = notification.title.toLowerCase();
+    final senderId = notification.senderId;
+
+    if (type == 'support' ||
+        type == 'admin' ||
+        senderId == 'admin' ||
+        senderId == 'support' ||
+        title.contains('admin') ||
+        title.contains('support') ||
+        title.contains('urban services')) {
+      return _IconInfo(Icons.headset_mic_rounded, Colors.orange);
+    }
+
+    final String? bookingId = notification.bookingId;
+    final bool isBooking = bookingId != null &&
+        bookingId.isNotEmpty &&
+        !bookingId.startsWith('direct_chats') &&
+        !bookingId.startsWith('support_chats') &&
+        !bookingId.startsWith('messages');
+
+    if (isBooking) {
+      return _IconInfo(Icons.calendar_today, const Color(0xFF6C63FF));
+    }
+
     switch (type) {
       case 'discount':
         return _IconInfo(Icons.local_offer_outlined, Colors.orange);

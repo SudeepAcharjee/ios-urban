@@ -118,11 +118,11 @@ class _BookAWashScreenState extends ConsumerState<BookAWashScreen> {
     }
   }
 
+  double get _visitationFee => 0.0;
   double get _platformFee => 0.0;
   double get _taxFee => 0.0;
-  double get _gstFee => 0.0;
   double get _grandTotal =>
-      _itemTotal + _platformFee + _taxFee + _gstFee - _discountAmount;
+      _itemTotal + _visitationFee + _platformFee + _taxFee - _discountAmount;
 
   Future<void> _saveBookingToFirestore() async {
     if (_isSaving) return;
@@ -155,6 +155,9 @@ class _BookAWashScreenState extends ConsumerState<BookAWashScreen> {
         'totalPrice': _grandTotal,
         'coupon': _appliedCoupon,
         'discountAmount': _discountAmount,
+        'visitationFee': _visitationFee,
+        'platformFee': _platformFee,
+        'taxFee': _taxFee,
         'dateIndex': _selectedDateIndex,
         'date': _selectedDateString,
         'time': _selectedTime,
@@ -512,7 +515,7 @@ class _BookAWashScreenState extends ConsumerState<BookAWashScreen> {
 
         // 💰 Price Breakdown Container
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
@@ -525,23 +528,55 @@ class _BookAWashScreenState extends ConsumerState<BookAWashScreen> {
             ],
           ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSummaryPriceRow('Item Total', '₹${_itemTotal.toInt()}'),
-              const SizedBox(height: 14),
-              _buildSummaryPriceRow(
-                'Platform Fee',
-                _platformFee == 0 ? 'Free' : '₹${_platformFee.toInt()}',
-                isFree: _platformFee == 0,
+              const Text(
+                'Bill summary',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 22,
+                  color: textPrimary,
+                  letterSpacing: -0.5,
+                ),
               ),
-              const SizedBox(height: 14),
-              _buildSummaryPriceRow('Visiting Fee', 'Free', isFree: true),
-              const SizedBox(height: 14),
-              _buildSummaryPriceRow('GST', '₹${_gstFee.toInt()}'),
+              const SizedBox(height: 20),
 
+              // Item total row
+              _buildBillSummaryRow('Item total', '₹${_itemTotal.toInt()}'),
+              const SizedBox(height: 16),
+
+              // Visitation Fee row
+              _buildBillSummaryRow(
+                'Visitation Fee',
+                'Free',
+                showTooltip: true,
+                tooltipTitle: 'Visitation Fee',
+                tooltipMessage: 'This fee covers the travel cost and time for the service partner to visit your location.',
+              ),
+              const SizedBox(height: 16),
+
+              // Platform fee row
+              _buildBillSummaryRow(
+                'Platform fee',
+                'Free',
+                showTooltip: true,
+                tooltipTitle: 'Platform Fee',
+                tooltipMessage: 'This fee helps us run our platform, offer 24/7 customer support, and ensure high-quality service standards.',
+              ),
+              const SizedBox(height: 16),
+
+              // Est Govt. taxes row
+              _buildBillSummaryRow(
+                'Est Govt. taxes',
+                'Free',
+                showTooltip: true,
+                tooltipTitle: 'Estimated Government Taxes',
+                tooltipMessage: 'These are estimated government taxes (GST) applicable to the services and fees in your booking.',
+              ),
 
               if (_discountAmount > 0) ...[
-                const SizedBox(height: 14),
-                _buildSummaryPriceRow(
+                const SizedBox(height: 16),
+                _buildBillSummaryRow(
                   'Discount',
                   '-₹${_discountAmount.toInt()}',
                   isDiscount: true,
@@ -549,43 +584,14 @@ class _BookAWashScreenState extends ConsumerState<BookAWashScreen> {
               ],
 
               const SizedBox(height: 20),
-              // Dashed Divider
-              Row(
-                children: List.generate(
-                  150 ~/ 2,
-                  (index) => Expanded(
-                    child: Container(
-                      color: index % 2 == 0
-                          ? Colors.transparent
-                          : Colors.grey.withOpacity(0.2),
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
+              const Divider(height: 1, color: Color(0xFFE5E7EB)),
+              const SizedBox(height: 16),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Grand Total',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                      color: textPrimary,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  Text(
-                    '₹${_grandTotal.toInt()}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 20,
-                      color: textPrimary,
-                    ),
-                  ),
-                ],
+              // Total bill row
+              _buildBillSummaryRow(
+                'Total bill',
+                '₹${_grandTotal.toInt()}',
+                isBold: true,
               ),
             ],
           ),
@@ -596,36 +602,127 @@ class _BookAWashScreenState extends ConsumerState<BookAWashScreen> {
     );
   }
 
-  Widget _buildSummaryPriceRow(
+  Widget _buildBillSummaryRow(
     String label,
     String value, {
-    bool isFree = false,
+    bool isBold = false,
     bool isDiscount = false,
+    bool showTooltip = false,
+    String? tooltipTitle,
+    String? tooltipMessage,
   }) {
+    final labelStyle = TextStyle(
+      color: isBold ? const Color(0xFF111827) : const Color(0xFF374151),
+      fontSize: isBold ? 16 : 15,
+      fontWeight: isBold ? FontWeight.w900 : FontWeight.w500,
+      decoration: showTooltip ? TextDecoration.underline : TextDecoration.none,
+      decorationStyle: showTooltip ? TextDecorationStyle.dotted : null,
+      decorationColor: showTooltip ? const Color(0xFF9CA3AF) : null,
+    );
+
+    final valueStyle = TextStyle(
+      fontWeight: isBold ? FontWeight.w900 : FontWeight.w700,
+      fontSize: isBold ? 16 : 15,
+      color: isDiscount || value == 'Free' ? const Color(0xFF10B981) : const Color(0xFF111827),
+    );
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF6B7280),
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 16,
-            color: (isFree || isDiscount)
-                ? const Color(0xFF10B981)
-                : const Color(0xFF111827),
-          ),
-        ),
+        if (showTooltip)
+          GestureDetector(
+            onTap: () {
+              _showFeeExplanationBottomSheet(tooltipTitle ?? label, tooltipMessage ?? '');
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Text(label, style: labelStyle),
+          )
+        else
+          Text(label, style: labelStyle),
+        Text(value, style: valueStyle),
       ],
     );
   }
+
+  void _showFeeExplanationBottomSheet(String title, String message) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Grab handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF4B5563),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2029C5),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Got it',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
 
   Widget _buildPaymentStep() {
     return Column(
