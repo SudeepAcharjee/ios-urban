@@ -16,6 +16,11 @@ flutter pub get
 
 echo "➡️ Installing CocoaPods dependencies"
 cd ios
-pod deintegrate
+
+echo "➡️ Nuking old Pods cache to prevent Xcode Cloud conflicts"
+rm -rf Pods
+rm -f Podfile.lock
+
+echo "➡️ Installing fresh Pods"
 pod install --repo-update
 echo "✅ Post-clone script completed successfully!"
