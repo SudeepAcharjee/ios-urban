@@ -72,5 +72,22 @@
 		<string>mailto</string>
 		<string>https</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs access to location to show nearby services and jobs.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>This app needs access to location to show nearby services and jobs in the background.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs access to location to show nearby services and jobs.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app requires access to the camera to allow users to upload profile pictures and service photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app requires access to the photo library to allow users to upload profile pictures and service photos.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app requires access to the microphone for video recording if you choose to record a service video.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

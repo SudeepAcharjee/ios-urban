@@ -349,43 +349,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         
                         SizedBox(height: screenHeight * 0.035),
                         
-                        // Google Login Button (Only for User Role; Hidden for Worker and Shop)
-                        if (_selectedRole == AuthRole.user) ...[
-                          _buildSocialButton(
-                            icon: Image.asset(
-                              'images/logo/google.png',
-                              height: 22 * hScale.clamp(0.9, 1.1),
-                              width: 22 * hScale.clamp(0.9, 1.1),
-                            ),
-                            label: 'Continue with Google',
-                            onPressed: () => _handleSocialLogin(() => ref.read(authViewModelProvider.notifier).signInWithGoogle()),
-                            backgroundColor: Colors.white,
-                            contentColor: Colors.black87,
-                            hScale: hScale,
-                          ),
-                          
-                          SizedBox(height: screenHeight * 0.025),
-                          
-                          // Divider
-                          Row(
-                            children: [
-                              Expanded(child: Divider(color: Colors.grey.shade300)),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
-                                child: Text(
-                                  'Or continue with email account',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade400,
-                                    fontSize: 13 * hScale.clamp(0.9, 1.1),
-                                  ),
-                                ),
-                              ),
-                              Expanded(child: Divider(color: Colors.grey.shade300)),
-                            ],
-                          ),
-                          
-                          SizedBox(height: screenHeight * 0.02),
-                        ],
+
                         
                         // Role Selector Tab Bar (User | Worker | Shop) - Below "Or continue with email account"
                         RoleTabBar(

@@ -135,32 +135,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                         SizedBox(height: screenHeight * 0.03),
 
-                        _buildSocialButton(
-                          icon: Image.asset(
-                            'images/logo/google.png',
-                            height: 22 * hScale.clamp(0.9, 1.1),
-                            width: 22 * hScale.clamp(0.9, 1.1),
-                          ),
-                          label: 'Continue with Google',
-                          onPressed: () => ref.read(authViewModelProvider.notifier).signInWithGoogle(isRegistration: true).catchError((_) {}),
-                          hScale: hScale,
-                        ),
-                        
-                        SizedBox(height: screenHeight * 0.025),
 
-                        // Divider
-                        Row(
-                          children: [
-                            Expanded(child: Divider(color: Colors.grey.shade300)),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 10),
-                              child: Text('Or', style: TextStyle(color: Colors.grey)),
-                            ),
-                            Expanded(child: Divider(color: Colors.grey.shade300)),
-                          ],
-                        ),
-                        
-                        SizedBox(height: screenHeight * 0.03),
 
                         // Name Field
                         _buildTextField(

@@ -161,15 +161,6 @@ class _WorkerChatScreenState extends ConsumerState<WorkerChatScreen> {
       children: [
         Scaffold(
           backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Messages',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
       body: assignedTasksAsync.when(
         data: (tasks) {
           final List<Map<String, dynamic>> displayTasks = tasks;
