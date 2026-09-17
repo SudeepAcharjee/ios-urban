@@ -14,13 +14,13 @@ flutter precache --ios
 echo "➡️ Getting Flutter packages"
 flutter pub get
 
-echo "➡️ Installing CocoaPods dependencies"
+echo "➡️ Cleaning old Pods to ensure fresh state"
 cd ios
-
-echo "➡️ Nuking old Pods cache to prevent Xcode Cloud conflicts"
 rm -rf Pods
 rm -f Podfile.lock
+cd ..
 
-echo "➡️ Installing fresh Pods"
-pod install --repo-update
+echo "➡️ Forcing a full Flutter iOS build to resolve all CocoaPods and Symlinks natively"
+flutter build ios --release --no-codesign
+
 echo "✅ Post-clone script completed successfully!"
