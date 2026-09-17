@@ -1,25 +1,22 @@
 #!/bin/sh
+
+# Fail this script if any subcommand fails.
 set -e
 
-echo "➡️ Changing directory to workspace root"
+# Navigate to the root of your cloned repo.
 cd $CI_PRIMARY_REPOSITORY_PATH
 
-echo "➡️ Installing Flutter"
+# 1. Clone the stable Flutter SDK from GitHub.
 git clone https://github.com/flutter/flutter.git --depth 1 -b stable $HOME/flutter
 export PATH="$PATH:$HOME/flutter/bin"
 
-echo "➡️ Precaching iOS artifacts"
+# 2. Pre-download the underlying artifacts required for iOS compilation.
 flutter precache --ios
 
-echo "➡️ Getting Flutter packages"
+# 3. Fetch the Flutter project dependencies.
 flutter pub get
 
-echo "➡️ Cleaning old Pods to ensure fresh state"
+# 4. Install CocoaPods and the project's iOS dependencies.
+HOMEBREW_NO_AUTO_UPDATE=1 brew install cocoapods
 cd ios
-rm -rf Pods
-rm -f Podfile.lock
-
-echo "➡️ Installing fresh Pods"
-pod install --repo-update
-
-echo "✅ Post-clone script completed successfully!"
+pod install
