@@ -60,7 +60,7 @@ dependencies:
   connectivity_plus: ^4.0.1
   razorpay_flutter: 1.4.1
   share_plus: ^10.1.4
-  audioplayers: ^6.1.0
+
 
 
 dev_dependencies:

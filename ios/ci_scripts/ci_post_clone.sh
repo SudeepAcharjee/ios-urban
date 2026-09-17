@@ -18,9 +18,8 @@ echo "➡️ Cleaning old Pods to ensure fresh state"
 cd ios
 rm -rf Pods
 rm -f Podfile.lock
-cd ..
 
-echo "➡️ Forcing a full Flutter iOS build to resolve all CocoaPods and Symlinks natively"
-flutter build ios --release --no-codesign
+echo "➡️ Installing fresh Pods"
+pod install --repo-update
 
 echo "✅ Post-clone script completed successfully!"
