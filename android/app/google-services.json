@@ -1,0 +1,71 @@
+{
+  "project_info": {
+    "project_number": "1023158542442",
+    "firebase_url": "https://urbanservices-d34d2-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "urbanservices-d34d2",
+    "storage_bucket": "urbanservices-d34d2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1023158542442:android:e6c11335e1dfbc71aaaa13",
+        "android_client_info": {
+          "package_name": "com.urbanservices.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1023158542442-7sgvlascv2a77ok0lrbtjchlfb7cvjje.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.urbanservices.app",
+            "certificate_hash": "86e590d240a7367aa9d2bdd06590a28f287e70a4"
+          }
+        },
+        {
+          "client_id": "1023158542442-dmllc4hpb1g5pitggv1o319eopb8bjhr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.urbanservices.app",
+            "certificate_hash": "4d84809ba8b7bab1157ec40eae1799f5810b8b2a"
+          }
+        },
+        {
+          "client_id": "1023158542442-krs14apd6spdvipli8ma0v85971mpdj9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.urbanservices.app",
+            "certificate_hash": "b361ea418133b9c91cc7ad2f99f0eaad4ddeac05"
+          }
+        },
+        {
+          "client_id": "1023158542442-q9q8a952tck0rc8g4udl93rutf38plg7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCn_nOEXvs6Sl1_GOUYt0wfLhKgiShKVmI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1023158542442-q9q8a952tck0rc8g4udl93rutf38plg7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1023158542442-ibq4supap0ek7464f4a0cqbnkcbh8tll.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.sudeepacharjee.urbanservice2026"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

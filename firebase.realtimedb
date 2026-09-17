@@ -1,0 +1,84 @@
+{
+  "rules": {
+    "notifications": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "$userId": {
+        ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists())",
+        "$notificationId": {
+          ".write": "auth != null && (!data.exists() || auth.uid === $userId || root.child('admins').child(auth.uid).exists())",
+          ".validate": "newData.hasChildren(['title', 'message', 'timestamp'])"
+        }
+      }
+    },
+    "messages": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "$userId": {
+        ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists())",
+        ".write": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists())",
+        "$messageId": {
+          ".validate": "newData.hasChildren(['senderId', 'timestamp']) && (newData.hasChild('text') || newData.hasChild('imageUrl'))"
+        }
+      }
+    },
+    "support": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "$userId": {
+        ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists())",
+        ".write": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists())",
+        "$messageId": {
+          ".validate": "newData.hasChildren(['senderId', 'timestamp']) && (newData.hasChild('text') || newData.hasChild('imageUrl'))"
+        }
+      }
+    },
+    "offers": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "$userId": {
+        ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists())",
+        ".write": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists())",
+        "$messageId": {
+          ".validate": "newData.hasChildren(['senderId', 'timestamp']) && (newData.hasChild('text') || newData.hasChild('imageUrl'))"
+        }
+      }
+    },
+    "bookings": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "$bookingId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$messageId": {
+          ".validate": "newData.hasChildren(['senderId', 'timestamp']) && (newData.hasChild('text') || newData.hasChild('imageUrl'))"
+        }
+      }
+    },
+    "support_chats": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      "$userId": {
+        ".read": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists())",
+        ".write": "auth != null && (auth.uid === $userId || root.child('admins').child(auth.uid).exists())",
+        "$messageId": {
+          ".validate": "newData.hasChildren(['senderId', 'timestamp']) && (newData.hasChild('text') || newData.hasChild('imageUrl'))"
+        }
+      }
+    },
+    "direct_chats": {
+      "$chatId": {
+        ".read": "auth != null && $chatId.contains(auth.uid)",
+        ".write": "auth != null && $chatId.contains(auth.uid)",
+        "$messageId": {
+          ".validate": "newData.hasChildren(['senderId', 'timestamp'])"
+        }
+      }
+    },
+    "admins": {
+      ".read": "auth != null",
+      "$adminId": {
+        ".read": "auth != null && (auth.uid === $adminId || root.child('admins').child(auth.uid).exists())",
+        ".write": "auth != null && (auth.uid === $adminId || root.child('admins').child(auth.uid).exists())"
+      }
+    },
+    "broadcasts": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).exists()",
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
+    }
+  }
+}

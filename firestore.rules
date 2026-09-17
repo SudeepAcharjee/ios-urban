@@ -1,0 +1,455 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admin/$(request.auth.uid));
+    }
+
+    function isStaff() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
+    }
+
+    function isManager() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/managers/$(request.auth.uid));
+    }
+
+    function isWorker() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/workers/$(request.auth.uid));
+    }
+
+    function isShop() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/shops/$(request.auth.uid));
+    }
+
+    function isDashboardUser() {
+      return isAdmin() || isStaff() || isManager();
+    }
+
+    function isSensitiveAdminOrStaffCollection() {
+      return request.path[0] == 'admin' || request.path[0] == 'staff' || request.path[0] == 'managers';
+    }
+
+    function isDashboardStaffOrManager() {
+      return isStaff() || isManager();
+    }
+
+    function staffHasFullAccess() {
+      return isDashboardUser() && !isSensitiveAdminOrStaffCollection();
+    }
+
+    // Admin: legacy app data (no ownerId) + own dashboard data
+    function adminCanRead() {
+      return isAdmin() && (
+        !('ownerId' in resource.data) ||
+        resource.data.ownerId == request.auth.uid
+      );
+    }
+
+    // Staff: only documents they created in their workspace
+    function staffCanRead() {
+      return isStaff() && resource.data.ownerId == request.auth.uid;
+    }
+
+    function canReadScoped() {
+      return adminCanRead() || staffCanRead();
+    }
+
+    function canCreateScoped() {
+      return isDashboardUser()
+        && request.resource.data.ownerId == request.auth.uid;
+    }
+
+    function canUpdateScoped() {
+      return (isStaff()
+          && resource.data.ownerId == request.auth.uid
+          && request.resource.data.ownerId == request.auth.uid)
+        || (isAdmin()
+          && resource.data.ownerId == request.auth.uid
+          && request.resource.data.ownerId == request.auth.uid)
+        || (isAdmin()
+          && !('ownerId' in resource.data)
+          && !('ownerId' in request.resource.data));
+    }
+
+    function canDeleteScoped() {
+      return (isStaff() && resource.data.ownerId == request.auth.uid)
+        || (isAdmin() && (
+          resource.data.ownerId == request.auth.uid ||
+          !('ownerId' in resource.data)
+        ));
+    }
+
+    match /users/{userId} {
+      allow read: if request.auth == null
+        || adminCanRead()
+        || staffCanRead()
+        || (request.auth != null && request.auth.uid == userId)
+        || staffHasFullAccess()
+        || isWorker()
+        || isShop();
+      allow create: if (request.auth != null && request.auth.uid == userId)
+        || canCreateScoped()
+        || staffHasFullAccess();
+      allow update: if request.auth != null
+        || canUpdateScoped()
+        || staffHasFullAccess();
+      allow delete: if (request.auth != null && request.auth.uid == userId)
+        || canDeleteScoped()
+        || staffHasFullAccess();
+
+      match /addresses/{addressId} {
+        allow read, write: if request.auth != null
+          && (request.auth.uid == userId || canReadScoped() || staffHasFullAccess());
+      }
+
+      match /bookmarked/{bookmarkId} {
+        allow read, write: if request.auth != null
+          && (request.auth.uid == userId || canReadScoped() || staffHasFullAccess());
+      }
+
+      match /payment/{paymentId} {
+        allow read, write: if request.auth != null
+          && (request.auth.uid == userId || canReadScoped() || staffHasFullAccess());
+      }
+
+      match /vehicles/{vehicleId} {
+        allow read, write: if request.auth != null
+          && (request.auth.uid == userId || canReadScoped() || staffHasFullAccess());
+      }
+    }
+
+    match /categories/{document=**} {
+      allow read: if true;
+      allow create: if canCreateScoped() || staffHasFullAccess();
+      allow update, delete: if canUpdateScoped() || canDeleteScoped() || staffHasFullAccess();
+    }
+
+    match /admin/{adminId} {
+      allow read: if request.auth != null && request.auth.uid == adminId;
+      allow update: if request.auth != null && request.auth.uid == adminId;
+      allow create, delete: if false;
+    }
+
+    match /staff/{staffId} {
+      allow read: if isAdmin()
+        || (isStaff() && request.auth.uid == staffId);
+      allow write, update, delete: if isAdmin();
+    }
+
+    match /managers/{managerId} {
+      allow read: if isAdmin()
+        || (isManager() && request.auth.uid == managerId);
+      allow write, update, delete: if isAdmin();
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.customerId == request.auth.uid ||
+        resource.data.workerId == request.auth.uid ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.shopId == request.auth.uid ||
+        resource.data.userEmailOrPhone == request.auth.token.email ||
+        resource.data.userEmailOrPhone == request.auth.token.phone_number ||
+        isShop() ||
+        isWorker() ||
+        canReadScoped() ||
+        staffHasFullAccess() ||
+        isAdmin()
+      );
+      allow create: if request.auth != null && (
+        request.resource.data.userId == request.auth.uid ||
+        request.resource.data.customerId == request.auth.uid ||
+        !('ownerId' in request.resource.data) ||
+        request.resource.data.ownerId == request.auth.uid ||
+        isShop() ||
+        canCreateScoped() ||
+        staffHasFullAccess() ||
+        isAdmin()
+      );
+      allow update: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.customerId == request.auth.uid ||
+        resource.data.workerId == request.auth.uid ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.shopId == request.auth.uid ||
+        isShop() ||
+        isWorker() ||
+        canUpdateScoped() ||
+        staffHasFullAccess() ||
+        isAdmin()
+      );
+      allow delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.customerId == request.auth.uid ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.shopId == request.auth.uid ||
+        canDeleteScoped() ||
+        staffHasFullAccess() ||
+        isAdmin()
+      );
+    }
+
+    match /services/{document=**} {
+      allow read: if true;
+      allow create: if (request.auth != null && (
+        request.resource.data.ownerId == request.auth.uid ||
+        request.resource.data.shopId == request.auth.uid ||
+        isShop() ||
+        canCreateScoped() ||
+        staffHasFullAccess() ||
+        isAdmin()
+      ));
+      allow update, delete: if (request.auth != null && (
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.shopId == request.auth.uid ||
+        isShop() ||
+        canUpdateScoped() ||
+        canDeleteScoped() ||
+        staffHasFullAccess() ||
+        isAdmin()
+      ));
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null || staffHasFullAccess();
+      allow update: if canUpdateScoped() || staffHasFullAccess();
+      allow delete: if canDeleteScoped()
+        || (request.auth != null && resource.data.userId == request.auth.uid)
+        || staffHasFullAccess();
+    }
+
+    match /workers/{workerId} {
+      allow read: if request.auth == null || request.auth != null;
+      allow create: if canCreateScoped()
+        || (request.auth != null && request.auth.uid == workerId)
+        || staffHasFullAccess();
+      allow update: if (request.auth != null && request.auth.uid == workerId)
+        || canUpdateScoped()
+        || staffHasFullAccess();
+      allow delete: if canDeleteScoped() || staffHasFullAccess();
+
+      match /kyc/{docId} {
+        allow read, write: if request.auth != null && (
+          request.auth.uid == workerId || canReadScoped() || staffHasFullAccess()
+        );
+      }
+    }
+
+    match /shops/{shopId} {
+      allow read: if true;
+      allow create: if canCreateScoped()
+        || (request.auth != null && request.auth.uid == shopId)
+        || staffHasFullAccess();
+      allow update: if (request.auth != null && request.auth.uid == shopId)
+        || canUpdateScoped()
+        || staffHasFullAccess();
+      allow delete: if canDeleteScoped() || staffHasFullAccess();
+    }
+
+    match /verify-service/{serviceId} {
+      allow read: if request.auth != null && (
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.shopId == request.auth.uid ||
+        isShop() ||
+        canReadScoped() ||
+        staffHasFullAccess() ||
+        isAdmin()
+      );
+      allow create: if request.auth != null && (
+        request.resource.data.ownerId == request.auth.uid ||
+        request.resource.data.shopId == request.auth.uid ||
+        isShop() ||
+        canCreateScoped() ||
+        staffHasFullAccess() ||
+        isAdmin()
+      );
+      allow update, delete: if request.auth != null && (
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.shopId == request.auth.uid ||
+        isShop() ||
+        canUpdateScoped() ||
+        canDeleteScoped() ||
+        staffHasFullAccess() ||
+        isAdmin()
+      );
+    }
+
+    match /discounts/{discountId} {
+      allow read: if true;
+      allow create: if request.auth != null || canCreateScoped() || staffHasFullAccess();
+      allow update: if (request.auth != null && resource.data.userId == request.auth.uid)
+        || canUpdateScoped()
+        || staffHasFullAccess();
+      allow delete: if canDeleteScoped() || staffHasFullAccess();
+    }
+
+    match /referrals/{referralId} {
+      allow read: if request.auth != null && (
+        resource.data.referrerId == request.auth.uid ||
+        resource.data.refereeId == request.auth.uid ||
+        staffHasFullAccess() ||
+        canReadScoped()
+      );
+      allow create: if request.auth != null;
+      allow update, delete: if staffHasFullAccess();
+    }
+
+    match /kyc_settings/{settingId} {
+      allow read: if canReadScoped() || true;
+      allow write: if canCreateScoped() || staffHasFullAccess();
+      allow update, delete: if canUpdateScoped() || canDeleteScoped() || staffHasFullAccess();
+    }
+
+    match /kyc_submissions/{workerId} {
+      allow read, write: if request.auth != null && (
+        request.auth.uid == workerId ||
+        canReadScoped() ||
+        staffHasFullAccess()
+      );
+      allow create: if canCreateScoped()
+        || (request.auth != null && request.auth.uid == workerId)
+        || staffHasFullAccess();
+      allow update, delete: if canUpdateScoped() || canDeleteScoped() || staffHasFullAccess();
+    }
+
+    match /support/{supportId} {
+      allow create: if true;
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        canReadScoped() ||
+        staffHasFullAccess()
+      );
+      allow update, delete: if canUpdateScoped() || canDeleteScoped() || staffHasFullAccess();
+    }
+
+    match /ads/{adId} {
+      allow read: if canReadScoped() || true;
+      allow write, update, delete: if canCreateScoped()
+        || canUpdateScoped()
+        || canDeleteScoped()
+        || staffHasFullAccess();
+    }
+
+    match /service_proof/{proofId} {
+      allow read: if request.auth != null && (canReadScoped() || staffHasFullAccess());
+      allow create: if request.auth != null && (
+        !('ownerId' in request.resource.data) ||
+        request.resource.data.ownerId == request.auth.uid
+      ) || staffHasFullAccess();
+      allow update, delete: if canUpdateScoped() || canDeleteScoped() || staffHasFullAccess();
+    }
+
+    match /maintenance/{docId} {
+      allow read: if docId == 'system'
+        || canReadScoped()
+        || staffHasFullAccess();
+      allow write: if (isAdmin() && docId == 'system')
+        || canCreateScoped()
+        || staffHasFullAccess();
+      allow update, delete: if (isAdmin() && docId == 'system')
+        || canUpdateScoped()
+        || canDeleteScoped()
+        || staffHasFullAccess();
+    }
+
+    match /mode/{docId} {
+      allow read: if docId == 'system'
+        || canReadScoped()
+        || staffHasFullAccess();
+      allow write: if (isAdmin() && docId == 'system')
+        || canCreateScoped()
+        || staffHasFullAccess();
+      allow update, delete: if (isAdmin() && docId == 'system')
+        || canUpdateScoped()
+        || canDeleteScoped()
+        || staffHasFullAccess();
+    }
+
+    match /hubs/{document=**} {
+      allow read: if canReadScoped() || staffHasFullAccess();
+      allow create: if canCreateScoped() || staffHasFullAccess();
+      allow update, delete: if canUpdateScoped() || canDeleteScoped() || staffHasFullAccess();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if request.auth != null && (canReadScoped() || staffHasFullAccess());
+      allow create: if canCreateScoped() || staffHasFullAccess();
+      allow update, delete: if canUpdateScoped() || canDeleteScoped() || staffHasFullAccess();
+    }
+
+        match /users_logs/{logId} {
+      allow read, write, delete: if isAdmin();
+      allow create, update: if request.auth != null;
+        }
+
+    match /payment_settings/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /payment_settlements/{settlementId} {
+      allow read: if request.auth != null && (
+        staffHasFullAccess() || 
+        isAdmin() || 
+        isShop() ||
+        (isWorker() && resource.data.workerId == request.auth.uid) ||
+        resource.data.shopId == request.auth.uid ||
+        resource.data.ownerId == request.auth.uid
+      );
+      allow create, update: if request.auth != null && (staffHasFullAccess() || isAdmin() || isShop());
+    }
+
+    match /subscriptions/{planId} {
+      allow read: if true;
+      allow create, update, delete: if canCreateScoped() || canUpdateScoped() || canDeleteScoped() || staffHasFullAccess() || isAdmin();
+    }
+
+    match /user_subscriptions/{subId} {
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        staffHasFullAccess() ||
+        isAdmin()
+      );
+      allow create: if request.auth != null && (
+        request.resource.data.userId == request.auth.uid ||
+        staffHasFullAccess() ||
+        isAdmin()
+      );
+      allow update: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        staffHasFullAccess() ||
+        isAdmin()
+      );
+      allow delete: if staffHasFullAccess() || isAdmin();
+    }
+
+    match /subscription_transactions/{txId} {
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        staffHasFullAccess() ||
+        isAdmin()
+      );
+      allow create, update: if request.auth != null && (
+        request.resource.data.userId == request.auth.uid ||
+        staffHasFullAccess() ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read: if canReadScoped() || staffHasFullAccess();
+      allow create: if canCreateScoped() || staffHasFullAccess();
+      allow update, delete: if canUpdateScoped() || canDeleteScoped() || staffHasFullAccess();
+    }
+  }
+}
