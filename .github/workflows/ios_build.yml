@@ -79,7 +79,7 @@ jobs:
               <string>93395F3483</string>
               <key>provisioningProfiles</key>
               <dict>
-                  <key>com.sudeepacharjee.urbanservice</key>
+                  <key>com.sudeepacharjee.urbanservice2026</key>
                   <string>urbanservice_appstore_v2</string>
               </dict>
               <key>signingCertificate</key>
