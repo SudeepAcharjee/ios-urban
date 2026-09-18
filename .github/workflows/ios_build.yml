@@ -64,7 +64,7 @@ jobs:
         run: |
           # Force Xcode to use Manual Signing and our specific profile
           sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
-          echo "PROVISIONING_PROFILE_SPECIFIER=urbanservice_appstore_v2" >> ios/Flutter/Release.xcconfig
+          echo "PROVISIONING_PROFILE_SPECIFIER=UrbanService Final" >> ios/Flutter/Release.xcconfig
           echo "CODE_SIGN_IDENTITY=Apple Distribution" >> ios/Flutter/Release.xcconfig
           
           # Create ExportOptions.plist
@@ -79,8 +79,8 @@ jobs:
               <string>93395F3483</string>
               <key>provisioningProfiles</key>
               <dict>
-                  <key>com.sudeepacharjee.urbanservice2026</key>
-                  <string>urbanservice_appstore_v2</string>
+                  <key>com.sudeepacharjee.urbanservice</key>
+                  <string>UrbanService Final</string>
               </dict>
               <key>signingCertificate</key>
               <string>Apple Distribution</string>

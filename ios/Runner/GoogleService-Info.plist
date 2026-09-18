@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>1023158542442-ibq4supap0ek7464f4a0cqbnkcbh8tll.apps.googleusercontent.com</string>
+	<string>1023158542442-ddb3tmtenivvvop9dhdr5hinic2iomu4.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.1023158542442-ibq4supap0ek7464f4a0cqbnkcbh8tll</string>
+	<string>com.googleusercontent.apps.1023158542442-ddb3tmtenivvvop9dhdr5hinic2iomu4</string>
 	<key>ANDROID_CLIENT_ID</key>
 	<string>1023158542442-7sgvlascv2a77ok0lrbtjchlfb7cvjje.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
@@ -15,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.sudeepacharjee.urbanservice2026</string>
+	<string>com.sudeepacharjee.urbanservice</string>
 	<key>PROJECT_ID</key>
 	<string>urbanservices-d34d2</string>
 	<key>STORAGE_BUCKET</key>
@@ -31,7 +31,7 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:1023158542442:ios:438a7ac991776cc1aaaa13</string>
+	<string>1:1023158542442:ios:3d1ec0b954c730abaaaa13</string>
 	<key>DATABASE_URL</key>
 	<string>https://urbanservices-d34d2-default-rtdb.asia-southeast1.firebasedatabase.app</string>
 </dict>
