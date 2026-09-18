@@ -60,7 +60,40 @@ jobs:
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
           
       - name: Build IPA
-        run: flutter build ipa --release
+        run: |
+          # Force Xcode to use Manual Signing and our specific profile
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
+          echo "PROVISIONING_PROFILE_SPECIFIER=urbanservice_appstore_v2" >> ios/Flutter/Release.xcconfig
+          echo "CODE_SIGN_IDENTITY=Apple Distribution" >> ios/Flutter/Release.xcconfig
+          
+          # Create ExportOptions.plist
+          cat <<EOF > ios/ExportOptions.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>93395F3483</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>com.urbanservices.app</key>
+                  <string>urbanservice_appstore_v2</string>
+              </dict>
+              <key>signingCertificate</key>
+              <string>Apple Distribution</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>stripSwiftSymbols</key>
+              <true/>
+              <key>uploadSymbols</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+          
+          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
         
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
