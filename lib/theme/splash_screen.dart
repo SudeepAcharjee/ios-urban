@@ -139,7 +139,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         } else if (!onboardingComplete) {
           targetScreen = const OnboardingScreen();
         } else {
-          targetScreen = const LoginScreen();
+          targetScreen = const MainScreen();
         }
 
         if (mounted) {

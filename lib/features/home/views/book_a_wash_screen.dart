@@ -12,6 +12,7 @@ import 'package:car_washing_service_app/features/home/providers/discount_provide
 import 'package:car_washing_service_app/features/home/models/discount_model.dart';
 import 'package:intl/intl.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import '../../auth/views/login_screen.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/razorpay_service.dart';
 import '../../../core/services/referral_service.dart';
@@ -347,9 +348,19 @@ class _BookAWashScreenState extends ConsumerState<BookAWashScreen> {
         setState(() {
           _isSaving = false;
         });
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to save booking: $e')));
+        if (e.toString().contains('User not logged in')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please login to complete your booking')),
+          );
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to save booking: $e')));
+        }
       }
     }
   }

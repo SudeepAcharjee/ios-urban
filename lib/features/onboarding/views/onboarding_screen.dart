@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../auth/views/login_screen.dart';
+import '../../home/views/main_screen.dart';
 import '../../../core/services/preference_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -58,7 +59,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        MaterialPageRoute(builder: (context) => const MainScreen()),
       );
     }
   }
